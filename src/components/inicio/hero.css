@@ -1,0 +1,11 @@
+@keyframes strokeAnimation {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-stroke path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: strokeAnimation 2s ease forwards;
+}

@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Definición del enum para el estado
+enum EstadoEnvio {
+  PTE_PREPARAR
+  PREPARACION
+  ENVIADO
+}
+
+model Coches {
+  id                   Int                    @id @default(autoincrement())
+  enVenta              Boolean                @default(false)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime?
+  url                  String?
+  usuarioRegistro      String?
+  matricula            String                 @unique
+  marca                String?
+  idUbicacion          Int
+  ubicacion            Ubicaciones            @relation(fields: [idUbicacion], references: [id])
+  historialUbicaciones HistorialUbicaciones[]
+  imagen               Bytes?
+  empresa              String?
+  vehiculosEnvio       VehiculosEnvio[]
+  vendidoLogistica     Boolean                @default(false)
+  actualizadoA3        Boolean                @default(false) //Me indica si el coche ha sido actualizado en A3
+  //Una vez se utilice el trigger del cron, se cambia el campo a false
+  numeroReintentosA3   Int?                   @default(0) //Indica el número de veces que ha sido ejecutado en el A3
+
+  @@index([idUbicacion]) // Adding an index to idUbicacion to optimize queries involving this field
+}
+
+model CronStatus {
+  id         Int       @id @default(autoincrement())
+  isRunning  Boolean   @default(false) // Estado actual del cron
+  startedAt  DateTime? // Hora de inicio
+  finishedAt DateTime? // Hora de finalización
+}
+
+model Ubicaciones {
+  id                   Int                    @id @default(autoincrement())
+  latitud              Float
+  longitud             Float
+  nombre               String
+  nombreAMostrar       String
+  nombreA3             String?
+  agenteExterno        Boolean                @default(false) // Campo que dice si un taller es un agente externo
+  coches               Coches[]
+  historialUbicaciones HistorialUbicaciones[]
+  vehiculosEnvio       VehiculosEnvio[] // Relación con envíos de vehículos
+  vehiculosEnvioFinal  VehiculosEnvio[]       @relation("ubicacionFinalDestino") // Relación con envíos donde esta es la ubicación final
+
+  @@index([nombre]) // Adding an index to nombre for faster queries on this field
+}
+
+model HistorialUbicaciones {
+  id              Int         @id @default(autoincrement())
+  idCoche         Int
+  idUbicacion     Int
+  usuarioRegistro String
+  telefono        String
+  fechaUbicacion  DateTime    @default(now())
+  coche           Coches      @relation(fields: [idCoche], references: [id])
+  ubicacion       Ubicaciones @relation(fields: [idUbicacion], references: [id])
+  kilometros      Int
+
+  @@index([idCoche])
+  @@index([idUbicacion])
+}
+
+model VehiculosEnvio {
+  id                      Int          @id @default(autoincrement())
+  idCoche                 Int          @unique // Relación con el modelo Coches 
+  coche                   Coches       @relation(fields: [idCoche], references: [id])
+  idUbicacion             Int // Relación con el modelo Ubicaciones 
+  ubicacion               Ubicaciones  @relation(fields: [idUbicacion], references: [id])
+  idUbicacionFinalDestino Int? // Relación con la ubicación final destino
+  ubicacionFinalDestino   Ubicaciones? @relation("ubicacionFinalDestino", fields: [idUbicacionFinalDestino], references: [id])
+  fechaEstimadaDestino    DateTime? // Fecha estimada de llegada al destino
+  estado                  EstadoEnvio // Estado del envío, limitado por el enum EstadoEnvio
+  observaciones           String? // Observaciones adicionales
+  usuarioAsignado         String // Usuario asignado al envío
+  createdAt               DateTime     @default(now()) // Fecha de creación del registro
+  updatedAt               DateTime? // Fecha de última actualización
+
+  @@index([idCoche]) // Índice para optimizar las consultas basadas en idCoche
+  @@index([idUbicacion]) // Índice para optimizar las consultas basadas en idUbicacion
+  @@index([idUbicacionFinalDestino]) // Índice para optimizar las consultas basadas en idUbicacionFinalDestino
+}
+
+model Usuarios {
+  id        Int     @id @default(autoincrement())
+  user_id   String  @unique
+  job_title String?
+}
