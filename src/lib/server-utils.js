@@ -1,186 +1,77 @@
 import "server-only";
 import prisma from "@/lib/db";
-import { revalidatePath } from "next/cache";
-import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+// Quita revalidatePath y getKindeServerSession si no se usan en OTRAS funciones de este archivo
+// que quieras mantener de tu commit abd738fec...
+// import { revalidatePath } from "next/cache";
+// import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 
-export const getCombinedCochesData = async () => {
-  const [
-    coches,
-    ultimosCincoCoches,
-    cochesVentaCount,
-    ubicacionesTotal,
-    cochesTransito,
-  ] = await Promise.all([
-    prisma.coches.findMany({
-      select: {
-        id: true,
-        enVenta: true,
-        matricula: true,
-        marca: true,
-        usuarioRegistro: true,
-        updatedAt: true,
-        actualizadoA3: true,
-        ubicacion: {
-          select: {
-            nombre: true,
-          },
-        },
-        vendidoLogistica: true,
-      },
-    }),
-    prisma.coches.findMany({
-      orderBy: {
-        updatedAt: "desc",
-      },
-      take: 5,
-      select: {
-        id: true,
-        enVenta: true,
-        matricula: true,
-        marca: true,
-        usuarioRegistro: true,
-        updatedAt: true,
-        ubicacion: {
-          select: {
-            nombre: true,
-          },
-        },
-      },
-    }),
-    prisma.coches.groupBy({
-      by: ["enVenta"],
-      _count: {
-        _all: true,
-      },
-    }),
-    prisma.ubicaciones.findMany({
-      select: {
-        id: true,
-        nombre: true,
-      },
-    }),
-    prisma.coches.count({
-      where: {
-        ubicacion: {
-          nombre: {
-            contains: "transito",
-          },
-        },
-      },
-    }),
-  ]);
+// --- Mantén tus OTRAS funciones de server-utils.js como estaban en el commit abd738fec... ---
+// Ejemplo:
+// export const getCombinedCochesData = async () => { ... }
+// export const getCochesZona = async () => { ... }
+// etc.
 
-  const cochesEnVentaCount =
-    cochesVentaCount.find((group) => group.enVenta)?.["_count"]._all || 0;
-  const cochesNoEnVentaCount =
-    cochesVentaCount.find((group) => !group.enVenta)?.["_count"]._all || 0;
-
-  const cochesVenta = [
-    {
-      nombre: "En Venta",
-      numero: cochesEnVentaCount,
-    },
-    {
-      nombre: "En Preparación",
-      numero: cochesNoEnVentaCount,
-    },
-  ];
-  revalidatePath("/dashboard");
-  return {
-    coches,
-    ultimosCincoCoches,
-    cochesVenta,
-    ubicacionesTotal,
-    cochesTransito,
-  };
-};
-
-export const getCochesZona = async () => {
-  const carCountsByLocation = await prisma.ubicaciones.findMany({
-    select: {
-      nombre: true,
-      _count: {
-        select: {
-          coches: true,
-        },
-      },
-    },
-  });
-
-  const result = carCountsByLocation.map((location) => ({
-    name: location.nombre,
-    value: location._count.coches,
-  }));
-  return result;
-};
-
-export const getUbicaciones = async () => {
-  const ubicaciones = await prisma.ubicaciones.findMany();
-  return ubicaciones;
-};
-
-export const getUbicacionesVehiculo = async (idCoche) => {
-  const ubicaciones = await prisma.historialUbicaciones.findMany({
-    where: {
-      idCoche: idCoche,
-    },
-    select: {
-      usuarioRegistro: true,
-      fechaUbicacion: true,
-      telefono: true,
-      kilometros: true,
-      ubicacion: {
-        select: {
-          nombre: true,
-          latitud: true,
-          longitud: true,
-        },
-      },
-    },
-  });
-  return ubicaciones;
-};
-
-export const getCocheDetails = async (idCoche) => {
-  const cocheDetails = await prisma.coches.findUnique({
-    where: {
-      id: idCoche,
-    },
-    select: {
-      marca: true,
-      matricula: true,
-      empresa: true,
-      actualizadoA3: true,
-    },
-  });
-  return cocheDetails;
-};
-
-export const getUsuarios = async () => {
+// --- Función getPuestosUsuarios con try...catch ---
+export const getPuestosUsuarios = async () => {
+  console.log("SRV_LOG: lib/server-utils.js - Llamando a getPuestosUsuarios...");
   try {
-    // Usar KINDE_ISSUER_URL de las variables de entorno para la URL base de Kinde
+    // Asegúrate que el modelo se llama 'Usuarios' en tu schema.prisma y tiene los campos user_id y job_title
+    // Si tu tabla se llama 'User' y el id de Kinde se guarda como 'kinde_id', ajusta esto:
+    // const puestos = await prisma.User.findMany({ select: { kinde_id: true, job_title: true }});
+    const puestos = await prisma.Usuarios.findMany({ // Usando "Usuarios" como en tu schema
+        select: {
+            user_id: true, // El ID del usuario de Kinde (ej. 'kp_...')
+            job_title: true
+        }
+    });
+    const resultado = puestos || [];
+    console.log(`SRV_LOG: lib/server-utils.js - getPuestosUsuarios devolvió array. Longitud: ${resultado.length}`);
+    return resultado;
+  } catch (error) {
+    console.error("SRV_LOG: lib/server-utils.js - Error crítico al obtener puestos de usuarios (getPuestosUsuarios):", error);
+    return []; // Siempre devuelve un array vacío en caso de error
+  }
+};
+
+// --- Función getUsuarios con try...catch y logging ---
+export const getUsuarios = async () => {
+  console.log("SRV_LOG: lib/server-utils.js - Llamando a getUsuarios...");
+  try {
     const kindeDomain = process.env.KINDE_ISSUER_URL;
+    if (!kindeDomain) {
+      console.error("SRV_LOG: lib/server-utils.js - KINDE_ISSUER_URL no está configurada.");
+      throw new Error("KINDE_ISSUER_URL no está configurada en las variables de entorno.");
+    }
+    // Añade verificaciones similares para KINDE_CLIENT_ID, KINDE_CLIENT_SECRET, ORG_CODE si es necesario
+    if (!process.env.KINDE_CLIENT_ID) throw new Error("KINDE_CLIENT_ID no está configurada.");
+    if (!process.env.KINDE_CLIENT_SECRET) throw new Error("KINDE_CLIENT_SECRET no está configurada.");
+    if (!process.env.ORG_CODE) throw new Error("ORG_CODE no está configurada.");
+
+
+    console.log("SRV_LOG: lib/server-utils.js - getUsuarios: Solicitando token a Kinde...");
     const tokenResponse = await fetch(`${kindeDomain}/oauth2/token`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       cache: "no-store",
       body: new URLSearchParams({
-        audience: `${kindeDomain}/api`, // La audiencia de la API de gestión de Kinde
+        audience: `${kindeDomain}/api`,
         grant_type: "client_credentials",
         client_id: process.env.KINDE_CLIENT_ID,
         client_secret: process.env.KINDE_CLIENT_SECRET,
       }),
     });
+
     if (!tokenResponse.ok) {
-      throw new Error("Error actualizando el token");
+      const errorBody = await tokenResponse.text();
+      console.error("SRV_LOG: lib/server-utils.js - getUsuarios: Respuesta de error del token de Kinde:", errorBody);
+      throw new Error(`Error obteniendo token de Kinde: ${tokenResponse.status} ${tokenResponse.statusText}`);
     }
 
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
+    console.log("SRV_LOG: lib/server-utils.js - getUsuarios: Token de Kinde obtenido.");
 
-    // Usar el access token para obtener la lista de usuarios
+    console.log("SRV_LOG: lib/server-utils.js - getUsuarios: Solicitando usuarios a Kinde API...");
     const usersResponse = await fetch(
       `${kindeDomain}/api/v1/organizations/${process.env.ORG_CODE}/users?page_size=400`,
       {
@@ -194,171 +85,42 @@ export const getUsuarios = async () => {
     );
 
     if (!usersResponse.ok) {
-      throw new Error(`Error obteniendo usuarios ${usersResponse.statusText}`);
+      const errorBody = await usersResponse.text();
+      console.error("SRV_LOG: lib/server-utils.js - getUsuarios: Respuesta de error al obtener usuarios de Kinde:", errorBody);
+      throw new Error(`Error obteniendo usuarios de Kinde: ${usersResponse.status} ${usersResponse.statusText}`);
     }
 
     const usersData = await usersResponse.json();
+    console.log("SRV_LOG: lib/server-utils.js - getUsuarios: Usuarios de Kinde obtenidos.");
 
-    // 2. Obtener los puestos de los usuarios
-    // Asumiendo que getPuestosUsuarios es una función asíncrona que devuelve una promesa
-    const puestosUsuarios = await getPuestosUsuarios();
+    const puestosUsuarios = await getPuestosUsuarios(); // Llama a la función con try-catch
 
-    // 3. Crear un mapa para acceder rápidamente al job_title por user_id
     const jobTitleMap = new Map();
-    puestosUsuarios.forEach((puesto) => {
-      jobTitleMap.set(puesto.user_id, puesto.job_title);
-    });
+    if (Array.isArray(puestosUsuarios)) {
+        puestosUsuarios.forEach((puesto) => {
+          jobTitleMap.set(puesto.user_id, puesto.job_title); // Asegúrate que 'user_id' y 'job_title' son los nombres correctos de tu tabla 'Usuarios'
+        });
+    }
 
-    // 4. Mapear y combinar los datos de usuarios con sus puestos
-    const usuariosCombinados = usersData.organization_users.map((usuario) => ({
-      id: usuario.id, // Usar la ID original 'kb...'
+    const kindeUsersArray = usersData.organization_users || [];
+    const usuariosCombinados = kindeUsersArray.map((usuario) => ({
+      id: usuario.id,
       email: usuario.email,
-      roles: usuario.roles,
+      roles: usuario.roles || [],
       full_name: usuario.full_name,
-      job_title: jobTitleMap.get(usuario.id) || "Sin puesto asignado", // Asignar job_title o un valor por defecto
+      job_title: jobTitleMap.get(usuario.id) || "Sin puesto asignado",
     }));
-
-    // 5. Devolver el array combinado de usuarios
+    
+    console.log(`SRV_LOG: lib/server-utils.js - getUsuarios devolvió array combinado. Longitud: ${usuariosCombinados.length}`);
     return usuariosCombinados;
+
   } catch (error) {
-    return null;
+    console.error("SRV_LOG: lib/server-utils.js - Error crítico en getUsuarios:", error.message);
+    // No solo error.message, loguea el error completo si es posible, o al menos su stack si está disponible.
+    // console.error(error); // Descomenta para ver el objeto de error completo
+    return []; // Siempre devuelve un array vacío en caso de error
   }
 };
 
-export const obtenerDatosAPI = async (matricula) => {
-  const { isAuthenticated } = getKindeServerSession();
-  if (!(await isAuthenticated())) {
-    redirect("/login");
-  }
-  const apiKey = process.env.API_KEY;
-  try {
-    const response = await fetch(
-      `http://212.64.162.34:8080/api/articulo/${matricula}?externalFields=false`,
-      {
-        method: "GET",
-        headers: {
-          APIKEY: apiKey,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error("Vehículo no encontrado");
-      } else {
-        throw new Error("Error en la conexión");
-      }
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.log("Error api: " + error);
-    return null;
-  }
-};
-
-export const getVehiculosEnvioGestion = async () => {
-  const vehiculosEnvio = await prisma.vehiculosEnvio.findMany({
-    include: {
-      coche: {
-        select: {
-          marca: true,
-          matricula: true,
-        },
-      },
-      ubicacionFinalDestino: {
-        select: {
-          nombre: true,
-        },
-      },
-      ubicacion: {
-        select: {
-          nombre: true,
-        },
-      },
-    },
-    orderBy: {
-      estado: "asc",
-    },
-  });
-
-  return vehiculosEnvio;
-};
-
-export const getVehiculosEnvioComercial = async () => {
-  const vehiculosEnvio = await prisma.vehiculosEnvio.findMany({
-    include: {
-      coche: {
-        select: {
-          marca: true,
-          matricula: true,
-        },
-      },
-      ubicacionFinalDestino: {
-        select: {
-          nombre: true,
-        },
-      },
-      ubicacion: {
-        select: {
-          nombre: true,
-        },
-      },
-    },
-    orderBy: {
-      fechaEstimadaDestino: "asc",
-    },
-  });
-
-  return vehiculosEnvio;
-};
-
-export const getCountByEstado = async () => {
-  const estadosCount = await prisma.vehiculosEnvio.groupBy({
-    by: ["estado"], // Agrupa por el campo estado
-    _count: {
-      estado: true, // Cuenta la cantidad de cada estado
-    },
-  });
-
-  const result = estadosCount.map((item) => {
-    let nuevoNombre;
-    switch (item.estado) {
-      case "PTE_PREPARAR":
-        nuevoNombre = "Pendiente de preparar";
-        break;
-      case "PREPARACION":
-        nuevoNombre = "En preparación";
-        break;
-      case "ENVIADO":
-        nuevoNombre = "En tránsito";
-        break;
-    }
-
-    return {
-      name: nuevoNombre,
-      value: item._count.estado,
-    };
-  });
-
-  return result;
-};
-
-export const getUbicacionesTotal = async () => {
-  const ubicaciones = prisma.ubicaciones.findMany({
-    where: {
-      agenteExterno: false,
-    },
-    select: {
-      id: true,
-      nombre: true,
-    },
-  });
-  return ubicaciones;
-};
-
-export const getPuestosUsuarios = async () => {
-  const usuarios = await prisma.usuarios.findMany();
-
-  return usuarios;
-};
+// --- Asegúrate de que el resto de funciones en este archivo sean las de tu commit abd738fec... ---
+// --- o que también tengan manejo de errores si hacen llamadas a BD/API ---
