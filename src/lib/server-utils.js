@@ -1,26 +1,16 @@
 import "server-only";
 import prisma from "@/lib/db";
-// Quita revalidatePath y getKindeServerSession si no se usan en OTRAS funciones de este archivo
-// que quieras mantener de tu commit abd738fec...
-// import { revalidatePath } from "next/cache";
-// import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
+import { revalidatePath } from "next/cache"; // Necesario para getCombinedCochesData
+import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server"; // Necesario para obtenerDatosAPI
+import { redirect } from "next/navigation"; // Necesario para obtenerDatosAPI
 
-// --- Mantén tus OTRAS funciones de server-utils.js como estaban en el commit abd738fec... ---
-// Ejemplo:
-// export const getCombinedCochesData = async () => { ... }
-// export const getCochesZona = async () => { ... }
-// etc.
-
-// --- Función getPuestosUsuarios con try...catch ---
+// --- Función getPuestosUsuarios (Versión corregida y estabilizada) ---
 export const getPuestosUsuarios = async () => {
   console.log("SRV_LOG: lib/server-utils.js - Llamando a getPuestosUsuarios...");
   try {
-    // Asegúrate que el modelo se llama 'Usuarios' en tu schema.prisma y tiene los campos user_id y job_title
-    // Si tu tabla se llama 'User' y el id de Kinde se guarda como 'kinde_id', ajusta esto:
-    // const puestos = await prisma.User.findMany({ select: { kinde_id: true, job_title: true }});
-    const puestos = await prisma.Usuarios.findMany({ // Usando "Usuarios" como en tu schema
+    const puestos = await prisma.Usuarios.findMany({
         select: {
-            user_id: true, // El ID del usuario de Kinde (ej. 'kp_...')
+            user_id: true,
             job_title: true
         }
     });
@@ -29,11 +19,11 @@ export const getPuestosUsuarios = async () => {
     return resultado;
   } catch (error) {
     console.error("SRV_LOG: lib/server-utils.js - Error crítico al obtener puestos de usuarios (getPuestosUsuarios):", error);
-    return []; // Siempre devuelve un array vacío en caso de error
+    return [];
   }
 };
 
-// --- Función getUsuarios con try...catch y logging ---
+// --- Función getUsuarios (Versión corregida y estabilizada con M2M y verificaciones M2M) ---
 export const getUsuarios = async () => {
   console.log("SRV_LOG: lib/server-utils.js - Llamando a getUsuarios...");
   try {
@@ -42,11 +32,9 @@ export const getUsuarios = async () => {
       console.error("SRV_LOG: lib/server-utils.js - KINDE_ISSUER_URL no está configurada.");
       throw new Error("KINDE_ISSUER_URL no está configurada en las variables de entorno.");
     }
-    // Añade verificaciones similares para KINDE_CLIENT_ID, KINDE_CLIENT_SECRET, ORG_CODE si es necesario
-    if (!process.env.KINDE_CLIENT_ID) throw new Error("KINDE_CLIENT_ID no está configurada.");
-    if (!process.env.KINDE_CLIENT_SECRET) throw new Error("KINDE_CLIENT_SECRET no está configurada.");
+    if (!process.env.KINDE_M2M_CLIENT_ID) throw new Error("KINDE_M2M_CLIENT_ID no está configurada.");
+    if (!process.env.KINDE_M2M_CLIENT_SECRET) throw new Error("KINDE_M2M_CLIENT_SECRET no está configurada.");
     if (!process.env.ORG_CODE) throw new Error("ORG_CODE no está configurada.");
-
 
     console.log("SRV_LOG: lib/server-utils.js - getUsuarios: Solicitando token a Kinde...");
     const tokenResponse = await fetch(`${kindeDomain}/oauth2/token`, {
@@ -93,12 +81,12 @@ export const getUsuarios = async () => {
     const usersData = await usersResponse.json();
     console.log("SRV_LOG: lib/server-utils.js - getUsuarios: Usuarios de Kinde obtenidos.");
 
-    const puestosUsuarios = await getPuestosUsuarios(); // Llama a la función con try-catch
+    const puestosUsuarios = await getPuestosUsuarios();
 
     const jobTitleMap = new Map();
     if (Array.isArray(puestosUsuarios)) {
         puestosUsuarios.forEach((puesto) => {
-          jobTitleMap.set(puesto.user_id, puesto.job_title); // Asegúrate que 'user_id' y 'job_title' son los nombres correctos de tu tabla 'Usuarios'
+          jobTitleMap.set(puesto.user_id, puesto.job_title);
         });
     }
 
@@ -115,12 +103,372 @@ export const getUsuarios = async () => {
     return usuariosCombinados;
 
   } catch (error) {
-    console.error("SRV_LOG: lib/server-utils.js - Error crítico en getUsuarios:", error.message);
-    // No solo error.message, loguea el error completo si es posible, o al menos su stack si está disponible.
-    // console.error(error); // Descomenta para ver el objeto de error completo
-    return []; // Siempre devuelve un array vacío en caso de error
+    console.error("SRV_LOG: lib/server-utils.js - Error crítico en getUsuarios:", error.message, error.stack);
+    return [];
   }
 };
 
-// --- Asegúrate de que el resto de funciones en este archivo sean las de tu commit abd738fec... ---
-// --- o que también tengan manejo de errores si hacen llamadas a BD/API ---
+// --- Nuevas funciones integradas ---
+
+export const getCombinedCochesData = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getCombinedCochesData...");
+    const [
+      coches,
+      ultimosCincoCoches,
+      cochesVentaCount,
+      ubicacionesTotal,
+      cochesTransito,
+    ] = await Promise.all([
+      prisma.coches.findMany({
+        select: {
+          id: true,
+          enVenta: true,
+          matricula: true,
+          marca: true,
+          usuarioRegistro: true,
+          updatedAt: true,
+          actualizadoA3: true,
+          ubicacion: {
+            select: {
+              nombre: true,
+            },
+          },
+          vendidoLogistica: true,
+        },
+      }),
+      prisma.coches.findMany({
+        orderBy: {
+          updatedAt: "desc",
+        },
+        take: 5,
+        select: {
+          id: true,
+          enVenta: true,
+          matricula: true,
+          marca: true,
+          usuarioRegistro: true,
+          updatedAt: true,
+          ubicacion: {
+            select: {
+              nombre: true,
+            },
+          },
+        },
+      }),
+      prisma.coches.groupBy({
+        by: ["enVenta"],
+        _count: {
+          _all: true,
+        },
+      }),
+      prisma.ubicaciones.findMany({
+        select: {
+          id: true,
+          nombre: true,
+        },
+      }),
+      prisma.coches.count({
+        where: {
+          ubicacion: {
+            nombre: {
+              contains: "transito",
+            },
+          },
+        },
+      }),
+    ]);
+
+    const cochesEnVentaCount =
+      cochesVentaCount.find((group) => group.enVenta)?.["_count"]._all || 0;
+    const cochesNoEnVentaCount =
+      cochesVentaCount.find((group) => !group.enVenta)?.["_count"]._all || 0;
+
+    const cochesVenta = [
+      {
+        nombre: "En Venta",
+        numero: cochesEnVentaCount,
+      },
+      {
+        nombre: "En Preparación",
+        numero: cochesNoEnVentaCount,
+      },
+    ];
+    revalidatePath("/dashboard"); // Considerar si esta revalidación es siempre necesaria aquí
+    console.log("SRV_LOG: getCombinedCochesData completado.");
+    return {
+      coches,
+      ultimosCincoCoches,
+      cochesVenta,
+      ubicacionesTotal,
+      cochesTransito,
+    };
+  } catch (error) {
+    console.error("SRV_LOG: Error en getCombinedCochesData:", error);
+    return { coches: [], ultimosCincoCoches: [], cochesVenta: [], ubicacionesTotal: [], cochesTransito: 0 };
+  }
+};
+
+export const getCochesZona = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getCochesZona...");
+    const carCountsByLocation = await prisma.ubicaciones.findMany({
+      select: {
+        nombre: true,
+        _count: {
+          select: {
+            coches: true,
+          },
+        },
+      },
+    });
+
+    const result = carCountsByLocation.map((location) => ({
+      name: location.nombre,
+      value: location._count.coches,
+    }));
+    console.log("SRV_LOG: getCochesZona completado.");
+    return result;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getCochesZona:", error);
+    return [];
+  }
+};
+
+export const getUbicaciones = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getUbicaciones...");
+    const ubicaciones = await prisma.ubicaciones.findMany();
+    console.log(`SRV_LOG: getUbicaciones devolvió ${ubicaciones ? ubicaciones.length : 'null/undefined'} ubicaciones.`);
+    return ubicaciones;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getUbicaciones:", error);
+    return [];
+  }
+};
+
+export const getUbicacionesVehiculo = async (idCoche) => {
+  try {
+    console.log(`SRV_LOG: Llamando a getUbicacionesVehiculo para idCoche: ${idCoche}...`);
+    const ubicaciones = await prisma.historialUbicaciones.findMany({
+      where: {
+        idCoche: idCoche,
+      },
+      select: {
+        usuarioRegistro: true,
+        fechaUbicacion: true,
+        telefono: true,
+        kilometros: true,
+        ubicacion: {
+          select: { // Corregido el select incompleto
+            nombre: true,
+            latitud: true,
+            longitud: true,
+          },
+        },
+      },
+    });
+    console.log("SRV_LOG: getUbicacionesVehiculo completado.");
+    return ubicaciones;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getUbicacionesVehiculo:", error);
+    return [];
+  }
+};
+
+export const getCocheDetails = async (idCoche) => {
+  try {
+    console.log(`SRV_LOG: Llamando a getCocheDetails para idCoche: ${idCoche}...`);
+    const cocheDetails = await prisma.coches.findUnique({
+      where: {
+        id: idCoche,
+      },
+      select: {
+        marca: true,
+        matricula: true,
+        empresa: true,
+        actualizadoA3: true,
+      },
+    });
+    console.log("SRV_LOG: getCocheDetails completado.");
+    return cocheDetails;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getCocheDetails:", error);
+    return null;
+  }
+};
+
+export const obtenerDatosAPI = async (matricula) => {
+  const { isAuthenticated } = getKindeServerSession();
+  if (!(await isAuthenticated())) {
+    // En lugar de redirect, que no funciona en Route Handlers o funciones server-side puras,
+    // podríamos devolver un error o un objeto indicando no autorizado.
+    // Por ahora, mantendré el redirect si esto se llama desde un Server Component / Action context.
+    // Si se llama desde una API route, esto podría necesitar un manejo diferente.
+    console.warn("SRV_LOG: obtenerDatosAPI - Usuario no autenticado intentando acceder.");
+    redirect("/login"); 
+  }
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("SRV_LOG: obtenerDatosAPI - API_KEY no está configurada.");
+    throw new Error("API_KEY no está configurada.");
+  }
+  try {
+    console.log(`SRV_LOG: Llamando a obtenerDatosAPI para matricula: ${matricula}...`);
+    const response = await fetch(
+      `http://212.64.162.34:8080/api/articulo/${matricula}?externalFields=false`,
+      {
+        method: "GET",
+        headers: {
+          APIKEY: apiKey,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`SRV_LOG: obtenerDatosAPI - Vehículo no encontrado para matricula: ${matricula}`);
+        // Devolver null o un objeto específico en lugar de lanzar error directamente
+        // para que el llamador pueda manejarlo.
+        return { error: "Vehículo no encontrado", status: 404 };
+      } else {
+        const errorText = await response.text();
+        console.error(`SRV_LOG: obtenerDatosAPI - Error en la conexión: ${response.status}`, errorText);
+        return { error: `Error en la conexión: ${response.status}`, status: response.status };
+      }
+    }
+    const data = await response.json();
+    console.log("SRV_LOG: obtenerDatosAPI completado.");
+    return data;
+  } catch (error) {
+    console.error("SRV_LOG: Error en obtenerDatosAPI:", error);
+    return { error: error.message || "Error desconocido en la API externa" };
+  }
+};
+
+export const getVehiculosEnvioGestion = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getVehiculosEnvioGestion...");
+    const vehiculosEnvio = await prisma.vehiculosEnvio.findMany({
+      include: {
+        coche: {
+          select: {
+            marca: true,
+            matricula: true,
+          },
+        },
+        ubicacionFinalDestino: {
+          select: {
+            nombre: true,
+          },
+        },
+        ubicacion: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+      orderBy: {
+        estado: "asc",
+      },
+    });
+    console.log("SRV_LOG: getVehiculosEnvioGestion completado.");
+    return vehiculosEnvio;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getVehiculosEnvioGestion:", error);
+    return [];
+  }
+};
+
+export const getVehiculosEnvioComercial = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getVehiculosEnvioComercial...");
+    const vehiculosEnvio = await prisma.vehiculosEnvio.findMany({
+      include: {
+        coche: {
+          select: {
+            marca: true,
+            matricula: true,
+          },
+        },
+        ubicacionFinalDestino: {
+          select: {
+            nombre: true,
+          },
+        },
+        ubicacion: {
+          select: {
+            nombre: true,
+          },
+        },
+      },
+      orderBy: {
+        fechaEstimadaDestino: "asc",
+      },
+    });
+    console.log("SRV_LOG: getVehiculosEnvioComercial completado.");
+    return vehiculosEnvio;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getVehiculosEnvioComercial:", error);
+    return [];
+  }
+};
+
+export const getCountByEstado = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getCountByEstado...");
+    const estadosCount = await prisma.vehiculosEnvio.groupBy({
+      by: ["estado"],
+      _count: {
+        estado: true,
+      },
+    });
+
+    const result = estadosCount.map((item) => {
+      let nuevoNombre;
+      switch (item.estado) {
+        case "PTE_PREPARAR":
+          nuevoNombre = "Pendiente de preparar";
+          break;
+        case "PREPARACION":
+          nuevoNombre = "En preparación";
+          break;
+        case "ENVIADO":
+          nuevoNombre = "En tránsito";
+          break;
+        default:
+          nuevoNombre = item.estado; // Mantener el estado original si no hay mapeo
+      }
+
+      return {
+        name: nuevoNombre,
+        value: item._count.estado,
+      };
+    });
+    console.log("SRV_LOG: getCountByEstado completado.");
+    return result;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getCountByEstado:", error);
+    return [];
+  }
+};
+
+export const getUbicacionesTotal = async () => {
+  try {
+    console.log("SRV_LOG: Llamando a getUbicacionesTotal...");
+    const ubicaciones = await prisma.ubicaciones.findMany({
+      where: {
+        agenteExterno: false,
+      },
+      select: {
+        id: true,
+        nombre: true,
+      },
+    });
+    console.log("SRV_LOG: getUbicacionesTotal completado.");
+    return ubicaciones;
+  } catch (error) {
+    console.error("SRV_LOG: Error en getUbicacionesTotal:", error);
+    return [];
+  }
+};
