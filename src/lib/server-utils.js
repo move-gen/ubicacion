@@ -56,8 +56,8 @@ export const getUsuarios = async () => {
       body: new URLSearchParams({
         audience: `${kindeDomain}/api`,
         grant_type: "client_credentials",
-        client_id: process.env.KINDE_CLIENT_ID,
-        client_secret: process.env.KINDE_CLIENT_SECRET,
+        client_id: process.env.KINDE_M2M_CLIENT_ID,
+        client_secret: process.env.KINDE_M2M_CLIENT_SECRET,
       }),
     });
 

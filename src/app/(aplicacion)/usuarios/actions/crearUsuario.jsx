@@ -29,8 +29,8 @@ export const crearUsuario = async (formData) => {
         body: new URLSearchParams({
           audience: `${kindeDomain}/api`, // La audiencia de la API de gestión de Kinde
           grant_type: "client_credentials",
-          client_id: process.env.KINDE_CLIENT_ID,
-          client_secret: process.env.KINDE_CLIENT_SECRET,
+          client_id: process.env.KINDE_M2M_CLIENT_ID,
+          client_secret: process.env.KINDE_M2M_CLIENT_SECRET,
         }),
       }
     );
