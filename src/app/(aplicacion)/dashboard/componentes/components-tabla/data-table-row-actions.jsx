@@ -11,14 +11,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Cross, RefreshCw, RefreshCwOff } from "lucide-react";
+import { MoreHorizontal, Cross, RefreshCw, RefreshCwOff, UploadCloud } from "lucide-react"; // Añadir UploadCloud o similar
 import MarcarComoVendido from "../crud/MarcarComoVendido";
+import { useState } from "react"; // Importar useState
+import { forceA3UpdateForCar } from "../../actions/forceA3UpdateAction"; // Importar la server action
+import toast from "react-hot-toast"; // Para notificaciones
 import {
   Tooltip,
   TooltipProvider,
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"; // Importar DropdownMenuItem
 
 export function DataTableRowActions({
   row,
@@ -26,6 +30,27 @@ export function DataTableRowActions({
   ubicacionesFiltradasLogistica,
 }) {
   const fila = row.original;
+  const [isUpdatingA3, setIsUpdatingA3] = useState(false);
+
+  const handleForceA3Update = async () => {
+    setIsUpdatingA3(true);
+    toast.loading(`Actualizando ${fila.matricula} en A3...`, { id: "a3-update-toast" });
+    try {
+      const result = await forceA3UpdateForCar(fila.matricula);
+      if (result.error) {
+        toast.error(`Error para ${fila.matricula}: ${result.error}`, { id: "a3-update-toast" });
+        console.error("[ForceA3Update Error]", result.error, result.a3_status, result.a3_response_body);
+      } else {
+        toast.success(result.message || `Actualización para ${fila.matricula} procesada.`, { id: "a3-update-toast" });
+        console.log("[ForceA3Update Success]", result.message, result.a3_status, result.a3_response_body);
+        // Aquí podrías querer forzar una revalidación o actualización de los datos de la tabla si es necesario
+      }
+    } catch (e) {
+      toast.error(`Excepción al actualizar ${fila.matricula}: ${e.message}`, { id: "a3-update-toast" });
+      console.error("[ForceA3Update Exception]", e);
+    }
+    setIsUpdatingA3(false);
+  };
 
   const getSyncStatus = () => {
     //Ubicación
@@ -99,6 +124,11 @@ export function DataTableRowActions({
 
         <DropdownMenuSeparator />
         <EliminarCoche fila={fila} />
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleForceA3Update} disabled={isUpdatingA3}>
+          <UploadCloud className="mr-2 h-4 w-4" />
+          {isUpdatingA3 ? "Actualizando A3..." : "Forzar Actualización A3"}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

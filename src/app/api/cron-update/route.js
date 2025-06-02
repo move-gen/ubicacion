@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { fetchWithTimeout, retry } from "@/lib/api-utils"; // Importar utilidades
 
 // Contraseña secreta para proteger la API
 const SECRET_KEY = process.env.API_CRON;
@@ -109,7 +110,7 @@ export async function GET(req) {
 
           // Realizar la solicitud a la API externa con reintentos y timeout
           await retry(async () => {
-            const response = await fetchWithTimeout(url, {
+            const response = await fetchWithTimeout(url, { // Usar la función importada
               method: "PUT",
               headers: {
                 APIKEY: apiKey,
@@ -192,36 +193,5 @@ export async function GET(req) {
   }
 }
 
-// Función fetch con timeout
-async function fetchWithTimeout(url, options, timeout = 23000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw new Error(
-      error.name === "AbortError" ? "Request timed out" : error.message
-    );
-  }
-}
-
-// Función de reintentos automática
-async function retry(fn, retries = 2) {
-  let attempt = 0;
-  while (attempt < retries) {
-    try {
-      return await fn();
-    } catch (error) {
-      attempt++;
-      console.warn(`Reintento ${attempt} fallido:`, error.message);
-      if (attempt >= retries) throw error;
-    }
-  }
-}
+// Las funciones fetchWithTimeout y retry se han movido a @/lib/api-utils.js
+// y se importan al principio del archivo.

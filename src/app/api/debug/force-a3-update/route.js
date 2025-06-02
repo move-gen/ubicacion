@@ -2,31 +2,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server"; // Para protegerla
+import { fetchWithTimeout, retry } from "@/lib/api-utils"; // Importar utilidades
 
-// Copiamos fetchWithTimeout y retry aquí para no modificar otros archivos
-async function fetchWithTimeout(url, options, timeout = 23000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw new Error(error.name === "AbortError" ? "Request timed out" : error.message);
-  }
-}
-
-async function retry(fn, retries = 2) {
-  let attempt = 0;
-  while (attempt < retries) {
-    try { return await fn(); } catch (error) {
-      attempt++;
-      console.warn(`[DEBUG_A3_UPDATE] Reintento ${attempt} fallido: ${error.message}`);
-      if (attempt >= retries) throw error;
-    }
-  }
-}
+// Las funciones fetchWithTimeout y retry se han movido a @/lib/api-utils.js
+// y se importan arriba.
 
 export async function GET(request) {
   const { isAuthenticated, getPermission } = getKindeServerSession();
@@ -74,7 +53,7 @@ export async function GET(request) {
     let a3CallSuccessful = false;
 
     await retry(async () => {
-      const response = await fetchWithTimeout(url, {
+      const response = await fetchWithTimeout(url, { // Usar la función importada
         method: "PUT",
         headers: { APIKEY: apiKey, "Content-Type": "application/json" },
         body: JSON.stringify(body),
