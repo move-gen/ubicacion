@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron-update?x-secure-token=API_CRON",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}

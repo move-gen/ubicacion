@@ -73,7 +73,7 @@ export async function GET(req) {
     console.log("[INFO]: Cron listo para ejecutarse");
 
     // 4. Ejecutar la lógica del cron job (actualizar coches)
-    const batchSize = 5; // Tamaño del bloque
+    const batchSize = 1; // Tamaño del bloque reducido para pruebas y evitar timeouts
     let lastProcessedId = 0; // ID del último coche procesado
     let totalActualizados = 0;
 
@@ -118,7 +118,19 @@ export async function GET(req) {
               body: JSON.stringify(body),
             });
             if (!response.ok) {
-              throw new Error(`Error al actualizar coche mediante la API`);
+              let errorBodyText = "No se pudo leer el cuerpo del error de A3 (posiblemente vacío o error de red).";
+              try {
+                // Intenta clonar la respuesta para leerla sin consumirla
+                const clonedResponse = response.clone(); 
+                errorBodyText = await clonedResponse.text();
+                if (!errorBodyText) { // Si el texto está vacío
+                    errorBodyText = "El cuerpo de la respuesta de error de A3 está vacío.";
+                }
+              } catch (e) {
+                console.warn("Advertencia: No se pudo leer el cuerpo de la respuesta de error de A3.", e.message);
+              }
+              // Lanza un error más detallado
+              throw new Error(`Error al actualizar coche ${coche.matricula} (URL: ${url}) mediante la API. Status: ${response.status}. A3 Response: ${errorBodyText}`);
             }
           });
 
@@ -136,7 +148,8 @@ export async function GET(req) {
             `Coche con matrícula ${coche.matricula} actualizado correctamente.`
           );
         } catch (error) {
-          console.error(`Error al actualizar coche ${coche.matricula}`);
+          // El error ya debería ser más detallado gracias al throw anterior
+          console.error(`Error procesando coche ${coche.matricula}: ${error.message}`);
 
           // Incrementar los reintentos si falla
           await prisma.coches.update({
