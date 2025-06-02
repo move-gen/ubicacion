@@ -28,6 +28,7 @@ import SkeletonCard from "./skeleton/CardsSkeleton";
 import { DataTable } from "./componentes/components-tabla/data-table";
 import columns from "./componentes/components-tabla/columns";
 import ExportButton from "./componentes/DescargaListadoCoches";
+import SyncA3Button from "./componentes/SyncA3Button"; // Importar el nuevo botón
 export const metadata = {
   title: "Panel de localizador de vehículos",
   description: "Localizador de vehículos",
@@ -144,7 +145,10 @@ export default async function Dashboard() {
                   Encuentre la ubicación de los vehículos
                 </CardDescription>
               </div>
-              <ExportButton data={coches} />
+              <div className="ml-auto flex items-center gap-2"> {/* Contenedor para los botones */}
+                <SyncA3Button /> {/* Añadir el nuevo botón aquí */}
+                <ExportButton data={coches} />
+              </div>
             </CardHeader>
             <CardContent>
               <Suspense fallback={<SkeletonDataTable />}>
