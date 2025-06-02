@@ -4,7 +4,7 @@ import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import { fetchWithTimeout, retry } from "@/lib/api-utils";
 import { revalidatePath } from "next/cache";
 
-const BATCH_SIZE_A3_SYNC = 5; // Número de coches a procesar por llamada
+const BATCH_SIZE_A3_SYNC = 2; // Reducido a 2 coches por llamada
 
 export async function syncAllPendingA3Updates() {
   const { isAuthenticated, getPermission } = getKindeServerSession();

@@ -76,9 +76,13 @@ export async function GET(req) {
     // 4. Ejecutar la lógica del cron job (actualizar coches)
     const batchSize = 1; // Tamaño del bloque reducido para pruebas y evitar timeouts
     let lastProcessedId = 0; // ID del último coche procesado
-    let totalActualizados = 0;
+    let totalActualizadosConExitoEnEstaEjecucion = 0;
+    let cochesIntentadosEnEstaEjecucion = 0;
+    const MAX_COCHES_POR_INVOCACION_CRON = 2; // Límite de coches a intentar por ejecución del cron
 
-    while (true) {
+    console.log(`[CRON_A3] Iniciando. Límite por ejecución: ${MAX_COCHES_POR_INVOCACION_CRON} coches.`);
+
+    while (cochesIntentadosEnEstaEjecucion < MAX_COCHES_POR_INVOCACION_CRON) {
       // Traer un bloque de coches para actualizar
       const cochesParaActualizar = await prisma.coches.findMany({
         where: {
@@ -97,11 +101,20 @@ export async function GET(req) {
         },
       });
 
-      if (cochesParaActualizar.length === 0) break; // Si ya no hay más registros, salimos del bucle
+      if (cochesParaActualizar.length === 0) {
+        console.log("[CRON_A3] No más coches pendientes de actualizar en este ciclo.");
+        break; 
+      }
 
       for (const coche of cochesParaActualizar) {
+        if (cochesIntentadosEnEstaEjecucion >= MAX_COCHES_POR_INVOCACION_CRON) {
+            console.log("[CRON_A3] Límite de coches por invocación alcanzado dentro del bucle 'for'.");
+            break; 
+        }
+        cochesIntentadosEnEstaEjecucion++;
+        
         try {
-          console.log(`Actualizando coche con matrícula: ${coche.matricula}`);
+          console.log(`[CRON_A3] Procesando (${cochesIntentadosEnEstaEjecucion}/${MAX_COCHES_POR_INVOCACION_CRON}): Matrícula ${coche.matricula}`);
 
           const url = `http://212.64.162.34:8080/api/articulo/${coche.matricula}`;
           const body = {
@@ -144,13 +157,13 @@ export async function GET(req) {
             },
           });
 
-          totalActualizados++;
+          totalActualizadosConExitoEnEstaEjecucion++;
           console.log(
-            `Coche con matrícula ${coche.matricula} actualizado correctamente.`
+            `[CRON_A3] Coche con matrícula ${coche.matricula} actualizado correctamente en A3 y BD local.`
           );
         } catch (error) {
           // El error ya debería ser más detallado gracias al throw anterior
-          console.error(`Error procesando coche ${coche.matricula}: ${error.message}`);
+          console.error(`[CRON_A3] Error procesando coche ${coche.matricula}: ${error.message}`);
 
           // Incrementar los reintentos si falla
           await prisma.coches.update({
@@ -162,15 +175,23 @@ export async function GET(req) {
         }
 
         // Actualizar el último ID procesado
-        lastProcessedId = coche.id;
-      }
-    }
+        lastProcessedId = coche.id; 
+      } // Fin del bucle for (coches individuales)
 
+      if (cochesIntentadosEnEstaEjecucion >= MAX_COCHES_POR_INVOCACION_CRON) {
+        console.log(`[CRON_A3] Límite de ${MAX_COCHES_POR_INVOCACION_CRON} coches intentados en esta invocación alcanzado.`);
+        break; // Salir del while si se alcanzó el límite
+      }
+    } // Fin del bucle while (lotes)
+
+    console.log(`[CRON_A3] Finalizado ciclo de procesamiento. Intentados: ${cochesIntentadosEnEstaEjecucion}, Exitosos en A3: ${totalActualizadosConExitoEnEstaEjecucion}.`);
     return NextResponse.json({
-      message: `${totalActualizados} coches actualizados correctamente.`,
+      message: `Cron A3: ${totalActualizadosConExitoEnEstaEjecucion} de ${cochesIntentadosEnEstaEjecucion} coches intentados fueron actualizados con éxito en A3.`,
+      intentados: cochesIntentadosEnEstaEjecucion,
+      exitosos: totalActualizadosConExitoEnEstaEjecucion
     });
   } catch (error) {
-    console.error("Error al ejecutar el cron job:", error);
+    console.error("[CRON_A3] Error al ejecutar el cron job:", error);
 
     return NextResponse.json(
       { error: "Error interno del servidor." },

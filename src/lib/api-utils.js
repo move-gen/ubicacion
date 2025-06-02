@@ -1,6 +1,6 @@
 // src/lib/api-utils.js
 
-export async function fetchWithTimeout(url, options, timeout = 55000) { // Aumentado a 55 segundos
+export async function fetchWithTimeout(url, options, timeout = 10000) { // Reducido a 10 segundos
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
