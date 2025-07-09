@@ -14,6 +14,7 @@ export async function POST(request) {
     const erroresDetalle = [];
     const actualizadosDetalle = [];
     const creadosDetalle = [];
+    const sinCambiosDetalle = [];
 
     try {
         const formData = await request.formData();
@@ -61,6 +62,11 @@ export async function POST(request) {
 
                 let coche;
                 if (existingCoche) {
+                    if (existingCoche.idUbicacion === ubicacionId) {
+                        // No hay cambio real
+                        sinCambiosDetalle.push({ matricula, ubicacion });
+                        continue;
+                    }
                     // Actualizar coche existente
                     coche = await db.coches.update({
                         where: { matricula: matricula },
@@ -116,6 +122,7 @@ export async function POST(request) {
             totalRecords: totalRegistros,
             updatedList: actualizadosDetalle,
             createdList: creadosDetalle,
+            noChangeList: sinCambiosDetalle,
         }, { status: 200 });
 
     } catch (error) {

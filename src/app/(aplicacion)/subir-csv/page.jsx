@@ -191,6 +191,31 @@ export default function SubirCSVPage() {
                                     </div>
                                 )}
 
+                                {/* Listado de sin cambios */}
+                                {importResult.noChangeList && importResult.noChangeList.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="font-semibold text-gray-700">Sin cambios ({importResult.noChangeList.length}):</h4>
+                                        <div className="max-h-40 overflow-y-auto border border-gray-300 p-2 rounded bg-gray-50">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Matrícula</TableHead>
+                                                        <TableHead>Ubicación</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {importResult.noChangeList.map((item, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell>{item.matricula}</TableCell>
+                                                            <TableCell>{item.ubicacion}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Listado de errores */}
                                 {importResult.errors && importResult.errors.length > 0 && (
                                     <div className="mt-4">
