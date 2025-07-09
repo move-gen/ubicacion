@@ -41,27 +41,16 @@ export async function POST(request) {
             }
 
             try {
-                // 1. Buscar o crear la ubicación
+                // 1. Buscar la ubicación existente
                 let existingUbicacion = await db.ubicaciones.findFirst({
                     where: { nombre: ubicacion },
                 });
 
-                let ubicacionId;
-                if (existingUbicacion) {
-                    ubicacionId = existingUbicacion.id;
-                } else {
-                    // Crear ubicación con valores por defecto
-                    const newUbicacion = await db.ubicaciones.create({
-                        data: {
-                            nombre: ubicacion,
-                            nombreAMostrar: ubicacion,
-                            latitud: 0,
-                            longitud: 0,
-                            agenteExterno: false,
-                        },
-                    });
-                    ubicacionId = newUbicacion.id;
+                if (!existingUbicacion) {
+                    erroresDetalle.push({ row: record, error: `Ubicación no encontrada: '${ubicacion}'. El coche no fue añadido ni actualizado.` });
+                    continue;
                 }
+                const ubicacionId = existingUbicacion.id;
 
                 // 2. Buscar o crear/actualizar el coche
                 const existingCoche = await db.coches.findUnique({
