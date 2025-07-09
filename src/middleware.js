@@ -9,7 +9,8 @@ export default withAuth(async function middleware(req) {}, {
     if (
       url.startsWith("/dashboard") ||
       url.startsWith("/usuarios") ||
-      url.startsWith("/ubicaciones")
+      url.startsWith("/ubicaciones") ||
+      url.startsWith("/subir-csv")
     ) {
       return token.permissions.includes("crud:ubicacion_coches");
     } else if (
@@ -29,6 +30,7 @@ export const config = {
     "/generar-qr",
     "/pdf/:path*",
     "/usuarios",
+    "/subir-csv",
     "/api/imagen-coche",
     "/api/datosVehiculo",
     "/api/escanear-qr",

@@ -41,4 +41,10 @@ export const SIDENAV_ITEMS = [
     path: "/escanear-qr",
     icon: <Icon icon="lucide:scan-line" width="20" height="20" />,
   },
+  {
+    title: "Subir CSV",
+    path: "/subir-csv",
+    icon: <Icon icon="lucide:upload" width="20" height="20" />,
+    requirePermissions: ["crud:ubicacion_coches"],
+  },
 ];

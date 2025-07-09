@@ -105,4 +105,21 @@ model Usuarios {
   id        Int     @id @default(autoincrement())
   user_id   String  @unique
   job_title String?
+  importaciones ImportacionCSV[] @relation("UsuariosToImportacionCSV")
+}
+
+model ImportacionCSV {
+  id                    String   @id @default(uuid())
+  fechaImportacion      DateTime @default(now())
+  nombreArchivo         String
+  usuarioId             String?  // user_id de Usuarios
+  usuario               Usuarios? @relation("UsuariosToImportacionCSV", fields: [usuarioId], references: [user_id])
+  totalRegistros        Int
+  vehiculosActualizados Int
+  vehiculosCreados      Int
+  errores               Json?
+  estado                String
+  mensaje               String?
+
+  @@map("importaciones_csv")
 }
