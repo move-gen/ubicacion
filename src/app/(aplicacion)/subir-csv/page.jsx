@@ -113,7 +113,7 @@ export default function SubirCSVPage() {
 
             {/* Sección de Resultados de la Última Importación */}
             {importResult && (
-                <Card className="w-full max-w-md">
+                <Card className="w-full max-w-2xl">
                     <CardHeader>
                         <CardTitle className="flex items-center">
                             <FileText className="mr-2 h-6 w-6" /> 
@@ -123,7 +123,7 @@ export default function SubirCSVPage() {
                             {importResult.message}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardContent className="space-y-6">
                         {importResult.error ? (
                             <div className="text-red-600 font-medium">
                                 Error: {importResult.error}
@@ -140,12 +140,64 @@ export default function SubirCSVPage() {
                                 <p>Total de Registros: <span className="font-semibold">{importResult.totalRecords}</span></p>
                                 <p>Vehículos Actualizados: <span className="font-semibold">{importResult.updatedCount}</span></p>
                                 <p>Vehículos Creados: <span className="font-semibold">{importResult.createdCount}</span></p>
+
+                                {/* Listado de actualizados */}
+                                {importResult.updatedList && importResult.updatedList.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="font-semibold text-green-700">Actualizados ({importResult.updatedList.length}):</h4>
+                                        <div className="max-h-40 overflow-y-auto border border-green-300 p-2 rounded bg-green-50">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Matrícula</TableHead>
+                                                        <TableHead>Ubicación</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {importResult.updatedList.map((item, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell>{item.matricula}</TableCell>
+                                                            <TableCell>{item.ubicacion}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Listado de creados */}
+                                {importResult.createdList && importResult.createdList.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="font-semibold text-blue-700">Creados ({importResult.createdList.length}):</h4>
+                                        <div className="max-h-40 overflow-y-auto border border-blue-300 p-2 rounded bg-blue-50">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Matrícula</TableHead>
+                                                        <TableHead>Ubicación</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {importResult.createdList.map((item, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell>{item.matricula}</TableCell>
+                                                            <TableCell>{item.ubicacion}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Listado de errores */}
                                 {importResult.errors && importResult.errors.length > 0 && (
                                     <div className="mt-4">
                                         <h4 className="font-semibold text-red-500">
                                             Errores en filas ({importResult.errors.length}):
                                         </h4>
-                                        <div className="max-h-40 overflow-y-auto border border-red-300 p-2 rounded">
+                                        <div className="max-h-40 overflow-y-auto border border-red-300 p-2 rounded bg-red-50">
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>

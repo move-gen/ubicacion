@@ -12,6 +12,8 @@ export async function POST(request) {
     let vehiculosActualizados = 0;
     let vehiculosCreados = 0;
     const erroresDetalle = [];
+    const actualizadosDetalle = [];
+    const creadosDetalle = [];
 
     try {
         const formData = await request.formData();
@@ -68,6 +70,7 @@ export async function POST(request) {
                         },
                     });
                     vehiculosActualizados++;
+                    actualizadosDetalle.push({ matricula, ubicacion });
                 } else {
                     // Crear nuevo coche
                     coche = await db.coches.create({
@@ -80,6 +83,7 @@ export async function POST(request) {
                         },
                     });
                     vehiculosCreados++;
+                    creadosDetalle.push({ matricula, ubicacion });
                 }
 
                 // 3. Registrar en HistorialUbicaciones
@@ -110,6 +114,8 @@ export async function POST(request) {
             createdCount: vehiculosCreados,
             errors: erroresDetalle,
             totalRecords: totalRegistros,
+            updatedList: actualizadosDetalle,
+            createdList: creadosDetalle,
         }, { status: 200 });
 
     } catch (error) {
