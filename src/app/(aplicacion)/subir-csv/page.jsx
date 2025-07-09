@@ -205,7 +205,8 @@ export default function SubirCSVPage() {
                             <ul className="text-sm text-gray-600 space-y-1">
                                 <li>• Si la matrícula existe, se actualiza su ubicación</li>
                                 <li>• Si la matrícula no existe, se crea un nuevo vehículo</li>
-                                <li>• Si la ubicación no existe, se crea automáticamente</li>
+                                <li>• <strong>Solo se pueden asignar coches a ubicaciones ya existentes</strong></li>
+                                <li>• Si la ubicación indicada no existe, se mostrará un error y el coche no será añadido ni actualizado</li>
                                 <li>• Se registra cada cambio en el historial de ubicaciones</li>
                             </ul>
                         </div>
