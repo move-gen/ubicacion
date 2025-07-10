@@ -62,6 +62,7 @@ export async function POST(request) {
 
                 let coche;
                 if (existingCoche) {
+                    console.log('ANTES:', existingCoche.matricula, 'ubicacion actual:', existingCoche.idUbicacion, 'ubicacion destino:', ubicacionId);
                     if (existingCoche.idUbicacion === ubicacionId) {
                         // No hay cambio real
                         sinCambiosDetalle.push({ matricula, ubicacion });
@@ -73,10 +74,13 @@ export async function POST(request) {
                         data: {
                             idUbicacion: ubicacionId,
                             updatedAt: new Date(),
-                            actualizadoA3: true,
+                            actualizadoA3: false,
                             usuarioRegistro: userId || 'sistema',
                         },
                     });
+                    // Leer el coche actualizado
+                    const cocheActualizado = await db.coches.findUnique({ where: { matricula } });
+                    console.log('DESPUÉS:', cocheActualizado.matricula, 'ubicacion actual:', cocheActualizado.idUbicacion);
                     vehiculosActualizados++;
                     actualizadosDetalle.push({ matricula, ubicacion });
                 } else {
