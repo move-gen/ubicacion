@@ -73,6 +73,8 @@ export async function POST(request) {
                         data: {
                             idUbicacion: ubicacionId,
                             updatedAt: new Date(),
+                            actualizadoA3: true,
+                            usuarioRegistro: userId || 'sistema',
                         },
                     });
                     vehiculosActualizados++;
