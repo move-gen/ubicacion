@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { parse } from 'csv-parse/sync';
 import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server';
+import { revalidatePath } from 'next/cache';
 
 export async function POST(request) {
     const { getUser } = getKindeServerSession();
@@ -44,16 +45,26 @@ export async function POST(request) {
             }
 
             try {
-                // 1. Buscar la ubicación existente
-                let existingUbicacion = await db.ubicaciones.findFirst({
-                    where: { nombre: ubicacion },
+                // 1. Buscar la ubicación existente (case-insensitive, sin espacios extra)
+                const ubicacionBuscada = ubicacion.trim();
+                const ubicacionesEncontradas = await db.ubicaciones.findMany({
+                    where: {
+                        nombre: {
+                            equals: ubicacionBuscada,
+                            mode: 'insensitive',
+                        },
+                    },
                 });
-
-                if (!existingUbicacion) {
+                if (ubicacionesEncontradas.length === 0) {
                     erroresDetalle.push({ row: record, error: `Ubicación no encontrada: '${ubicacion}'. El coche no fue añadido ni actualizado.` });
                     continue;
                 }
-                const ubicacionId = existingUbicacion.id;
+                if (ubicacionesEncontradas.length > 1) {
+                    console.log('DUPLICADO:', ubicacionBuscada, 'IDs:', ubicacionesEncontradas.map(u => u.id));
+                    erroresDetalle.push({ row: record, error: `Ubicación duplicada: '${ubicacion}'. Hay varias ubicaciones con el mismo nombre. Contacta con soporte para limpiar duplicados.` });
+                    continue;
+                }
+                const ubicacionId = ubicacionesEncontradas[0].id;
 
                 // 2. Buscar o crear/actualizar el coche
                 const existingCoche = await db.coches.findUnique({
@@ -119,6 +130,10 @@ export async function POST(request) {
         const finalMensaje = erroresDetalle.length > 0
             ? `Procesado con ${erroresDetalle.length} errores.`
             : `Procesado exitosamente.`;
+
+        // Revalidar caché de rutas relevantes
+        revalidatePath('/dashboard');
+        revalidatePath('/listado-vehiculos');
 
         return NextResponse.json({
             message: finalMensaje,
