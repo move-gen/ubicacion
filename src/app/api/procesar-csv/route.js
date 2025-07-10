@@ -45,26 +45,27 @@ export async function POST(request) {
             }
 
             try {
-                // 1. Buscar la ubicación existente (case-insensitive, sin espacios extra)
-                const ubicacionBuscada = ubicacion.trim();
-                const ubicacionesEncontradas = await db.ubicaciones.findMany({
-                    where: {
-                        nombre: {
-                            equals: ubicacionBuscada,
-                            mode: 'insensitive',
-                        },
-                    },
-                });
-                if (ubicacionesEncontradas.length === 0) {
+                // Normalizar nombre para comparar (sin tildes, sin espacios extra, minúsculas)
+                function normalize(str) {
+                    return str
+                        .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .toLowerCase();
+                }
+                const ubicacionBuscada = normalize(ubicacion);
+                const ubicacionesTodas = await db.ubicaciones.findMany();
+                const ubicacionesCoinciden = ubicacionesTodas.filter(u => normalize(u.nombre) === ubicacionBuscada);
+                if (ubicacionesCoinciden.length === 0) {
                     erroresDetalle.push({ row: record, error: `Ubicación no encontrada: '${ubicacion}'. El coche no fue añadido ni actualizado.` });
                     continue;
                 }
-                if (ubicacionesEncontradas.length > 1) {
-                    console.log('DUPLICADO:', ubicacionBuscada, 'IDs:', ubicacionesEncontradas.map(u => u.id));
+                if (ubicacionesCoinciden.length > 1) {
+                    console.log('DUPLICADO:', ubicacionBuscada, 'IDs:', ubicacionesCoinciden.map(u => u.id));
                     erroresDetalle.push({ row: record, error: `Ubicación duplicada: '${ubicacion}'. Hay varias ubicaciones con el mismo nombre. Contacta con soporte para limpiar duplicados.` });
                     continue;
                 }
-                const ubicacionId = ubicacionesEncontradas[0].id;
+                const ubicacionId = ubicacionesCoinciden[0].id;
 
                 // 2. Buscar o crear/actualizar el coche
                 const existingCoche = await db.coches.findUnique({
