@@ -42,25 +42,52 @@ export async function POST(request) {
     const fileBuffer = await file.arrayBuffer();
     const fileContent = Buffer.from(fileBuffer).toString("utf8");
 
-    const records = parse(fileContent, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-    });
+    let records;
+    try {
+      records = parse(fileContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      });
+    } catch (parseError) {
+      console.error("Error al parsear el CSV:", parseError);
+      return NextResponse.json(
+        {
+          error: "El formato del archivo CSV es inválido.",
+          details: parseError.message,
+        },
+        { status: 400 }
+      );
+    }
 
     totalRegistros = records.length;
 
-    // Obtener todas las ubicaciones una sola vez
-    const ubicacionesTodas = await db.ubicaciones.findMany();
-    const ubicacionesMap = new Map();
+    let ubicacionesMap;
+    try {
+      // Obtener todas las ubicaciones una sola vez
+      const ubicacionesTodas = await db.ubicaciones.findMany();
+      ubicacionesMap = new Map();
 
-    // Crear un mapa para búsqueda rápida con nombres normalizados
-    for (const u of ubicacionesTodas) {
-      const nombreNormalizado = normalize(u.nombre);
-      if (!ubicacionesMap.has(nombreNormalizado)) {
-        ubicacionesMap.set(nombreNormalizado, []);
+      // Crear un mapa para búsqueda rápida con nombres normalizados
+      for (const u of ubicacionesTodas) {
+        const nombreNormalizado = normalize(u.nombre);
+        if (!ubicacionesMap.has(nombreNormalizado)) {
+          ubicacionesMap.set(nombreNormalizado, []);
+        }
+        ubicacionesMap.get(nombreNormalizado).push(u);
       }
-      ubicacionesMap.get(nombreNormalizado).push(u);
+    } catch (dbError) {
+      console.error(
+        "Error al obtener ubicaciones de la base de datos:",
+        dbError
+      );
+      return NextResponse.json(
+        {
+          error:
+            "No se pudo conectar con la base de datos para obtener las ubicaciones.",
+        },
+        { status: 500 }
+      );
     }
 
     for (const record of records) {
