@@ -80,7 +80,7 @@ const obtenerDatosAPI = async (matricula) => {
   const apiKey = process.env.API_KEY;
   try {
     const response = await fetch(
-      `http://genesisplataformafinaciera.com:8080/api/articulo/${matricula}?externalFields=false`,
+      `http://genesisplataformafinanciera.com:8080/api/articulo/${matricula}?externalFields=false`,
       {
         method: "GET",
         headers: {
