@@ -116,7 +116,7 @@ export async function GET(req) {
         try {
           console.log(`[CRON_A3] Procesando (${cochesIntentadosEnEstaEjecucion}/${MAX_COCHES_POR_INVOCACION_CRON}): Matrícula ${coche.matricula}`);
 
-          const url = `http://212.64.162.34:8080/api/articulo/${coche.matricula}`;
+          const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
           const body = {
             Caracteristica1: coche.ubicacion?.nombreA3,
           };

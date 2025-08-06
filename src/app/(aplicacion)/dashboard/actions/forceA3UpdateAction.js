@@ -35,7 +35,7 @@ export async function forceA3UpdateForCar(matricula) {
     }
 
     console.log(`[FORCE_A3_ACTION]: Iniciando actualización A3 para matrícula: ${coche.matricula}`);
-    const url = `http://212.64.162.34:8080/api/articulo/${coche.matricula}`;
+    const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
     const body = { Caracteristica1: coche.ubicacion?.nombreA3 };
     
     console.log(`[FORCE_A3_ACTION]: Enviando a A3 para ${coche.matricula}: URL=${url}, Body=${JSON.stringify(body)}`);
