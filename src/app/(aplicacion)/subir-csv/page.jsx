@@ -514,7 +514,7 @@ export default function SubirCSVPage() {
                                     <li>• <strong>⚠️ CUIDADO: Esta acción es irreversible</strong></li>
                                     <li>• Si la matrícula existe, se elimina el vehículo completamente</li>
                                     <li>• Se eliminan todos los registros relacionados (historial, envíos)</li>
-                                    <li>• Si la matrícula no existe, se marca como "no encontrada"</li>
+                                    <li>• Si la matrícula no existe, se marca como &quot;no encontrada&quot;</li>
                                     <li>• Se recomienda hacer una copia de seguridad antes de eliminar</li>
                                 </ul>
                             </div>
