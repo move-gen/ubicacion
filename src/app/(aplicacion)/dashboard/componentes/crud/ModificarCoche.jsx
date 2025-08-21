@@ -18,6 +18,7 @@ import BuscarUbicacionesToggle from "./BuscarUbicacionesToggle";
 import { modificarCoche } from "./actions/modificarCoche";
 
 export default function ModificarCoche({ fila, ubiTotal }) {
+  const [marca, setMarca] = useState("");
   const [matricula, setMatricula] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [url, setURL] = useState("");
@@ -53,8 +54,12 @@ export default function ModificarCoche({ fila, ubiTotal }) {
     setMatricula(cleanedValue);
   };
 
+  const handleMarcaChange = (e) => {
+    setMarca(e.target.value);
+  };
+
   useEffect(() => {
-    if (matricula || ubicacion || url || kilometros || enVenta) {
+    if (marca || matricula || ubicacion || url || kilometros || enVenta) {
       if (ubicacion && !kilometros) {
         setIsSaveDisabled(true);
       } else {
@@ -63,7 +68,7 @@ export default function ModificarCoche({ fila, ubiTotal }) {
     } else {
       setIsSaveDisabled(true);
     }
-  }, [matricula, ubicacion, url, kilometros]);
+  }, [marca, matricula, ubicacion, url, kilometros]);
 
   const handleSubmit = async (e) => {
     e.preventDefault(); // Evitar comportamiento predeterminado del formulario
@@ -120,11 +125,11 @@ export default function ModificarCoche({ fila, ubiTotal }) {
                 </Label>
                 <Input
                   id="marca"
-                  value={fila.marca}
+                  value={marca}
                   name="marca"
+                  onChange={handleMarcaChange}
                   placeholder={fila.marca}
                   className="col-span-3"
-                  readOnly
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
