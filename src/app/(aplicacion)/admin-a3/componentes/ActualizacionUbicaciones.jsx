@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
   const [pausado, setPausado] = useState(false);
   const [filtro, setFiltro] = useState('todos'); // todos, pendientes, actualizados, errores
 
-  const cargarVehiculosPendientes = async () => {
+  const cargarVehiculosPendientes = useCallback(async () => {
     setIsLoading(true);
     onIniciarOperacion('Carga de vehículos pendientes');
     
@@ -55,7 +55,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onIniciarOperacion, onErrorOperacion]);
 
   const actualizarUbicaciones = async (iniciarDesde = 0) => {
     if (isActualizando) return;
@@ -216,7 +216,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
   useEffect(() => {
     cargarVehiculosPendientes();
-  }, []);
+  }, [cargarVehiculosPendientes]);
 
   return (
     <div className="space-y-6">

@@ -9,7 +9,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   RefreshCw, 
   Database, 
-  Sync, 
   AlertTriangle, 
   CheckCircle, 
   XCircle,
@@ -148,7 +147,7 @@ export default function AdminA3Page() {
       {/* Operación Activa */}
       {operacionActiva && (
         <Alert>
-          <Sync className="h-4 w-4 animate-spin" />
+          <RefreshCw className="h-4 w-4 animate-spin" />
           <AlertDescription>
             Operación en curso: <strong>{operacionActiva}</strong>
           </AlertDescription>

@@ -241,7 +241,7 @@ export default function EstadoComparacion({ onLog, onIniciarOperacion, onFinaliz
         <Alert>
           <Database className="h-4 w-4" />
           <AlertDescription>
-            Haz clic en "Comparar Estado" para ver la comparación entre tu base de datos local y A3.
+            Haz clic en &quot;Comparar Estado&quot; para ver la comparación entre tu base de datos local y A3.
           </AlertDescription>
         </Alert>
       )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +37,7 @@ export default function ControlLotes({ onLog, onIniciarOperacion, onFinalizarOpe
   const [historialLotes, setHistorialLotes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const cargarConfiguracion = async () => {
+  const cargarConfiguracion = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/admin-a3/configuracion-lotes');
@@ -53,7 +53,7 @@ export default function ControlLotes({ onLog, onIniciarOperacion, onFinalizarOpe
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onErrorOperacion]);
 
   const guardarConfiguracion = async () => {
     try {

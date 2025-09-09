@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ export default function SincronizacionNombres({ onLog, onIniciarOperacion, onFin
   const [tamañoLote, setTamañoLote] = useState(10);
   const [pausado, setPausado] = useState(false);
 
-  const cargarVehiculosSinNombre = async () => {
+  const cargarVehiculosSinNombre = useCallback(async () => {
     setIsLoading(true);
     onIniciarOperacion('Carga de vehículos sin nombre');
     
@@ -53,7 +53,7 @@ export default function SincronizacionNombres({ onLog, onIniciarOperacion, onFin
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onIniciarOperacion, onErrorOperacion]);
 
   const sincronizarNombres = async (iniciarDesde = 0) => {
     if (isSincronizando) return;
