@@ -80,7 +80,7 @@ const obtenerDatosAPI = async (matricula) => {
   const apiKey = process.env.API_KEY;
   try {
     const response = await fetch(
-      `http://212.64.162.34:8080/api/articulo/${matricula}?externalFields=false`,
+      `http://mleon1.syncsolutions.es:8080/api/articulo/${matricula}?externalFields=false`,
       {
         method: "GET",
         headers: {

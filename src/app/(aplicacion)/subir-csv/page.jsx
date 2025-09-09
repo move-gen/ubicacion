@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'react-hot-toast';
-import { Upload, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Table,
     TableBody,
@@ -18,11 +19,18 @@ import { Badge } from "@/components/ui/badge";
 
 export default function SubirCSVPage() {
     const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedDeleteFile, setSelectedDeleteFile] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isDeleteLoading, setIsDeleteLoading] = useState(false);
     const [importResult, setImportResult] = useState(null);
+    const [deleteResult, setDeleteResult] = useState(null);
 
     const handleFileChange = (event) => {
         setSelectedFile(event.target.files[0]);
+    };
+
+    const handleDeleteFileChange = (event) => {
+        setSelectedDeleteFile(event.target.files[0]);
     };
 
     const handleUpload = async () => {
@@ -61,6 +69,42 @@ export default function SubirCSVPage() {
         }
     };
 
+    const handleDelete = async () => {
+        if (!selectedDeleteFile) {
+            toast.error('Por favor, selecciona un archivo CSV.');
+            return;
+        }
+
+        setIsDeleteLoading(true);
+        setDeleteResult(null);
+        const formData = new FormData();
+        formData.append('csvFile', selectedDeleteFile);
+
+        try {
+            const response = await fetch('/api/eliminar-csv', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setDeleteResult(data);
+                toast.success(data.message || 'CSV procesado exitosamente.');
+                setSelectedDeleteFile(null);
+            } else {
+                const errorData = await response.json();
+                setDeleteResult(errorData);
+                toast.error(errorData.error || 'Error al procesar el CSV.');
+            }
+        } catch (error) {
+            console.error('Error al procesar el CSV:', error);
+            setDeleteResult({ error: 'Error de red o del servidor al procesar el CSV.', details: error.message });
+            toast.error('Error de red o del servidor al procesar el CSV.');
+        } finally {
+            setIsDeleteLoading(false);
+        }
+    };
+
     const renderStatusBadge = (hasErrors) => {
         if (hasErrors) {
             return (
@@ -80,38 +124,80 @@ export default function SubirCSVPage() {
 
     return (
         <div className="flex flex-col items-center justify-start min-h-[calc(100vh-100px)] p-4 pt-10 space-y-8">
-            {/* Sección de Carga de CSV */}
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle className="flex items-center">
-                        <Upload className="mr-2 h-6 w-6" /> 
-                        Subir CSV de Vehículos
-                    </CardTitle>
-                    <CardDescription>
-                        Sube un archivo CSV con matrículas y ubicaciones para actualizar o crear vehículos.
-                        <br />
-                        <strong>Formato esperado del CSV:</strong> matricula,ubicacion
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Input
-                        id="csvFile"
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileChange}
-                        disabled={isLoading}
-                    />
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isLoading}
-                        className="w-full"
-                    >
-                        {isLoading ? 'Procesando...' : 'Subir y Procesar CSV'}
-                    </Button>
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="upload" className="w-full max-w-4xl">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="upload">Subir Vehículos</TabsTrigger>
+                    <TabsTrigger value="delete">Eliminar Vehículos</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="upload" className="space-y-8">
+                    {/* Sección de Carga de CSV */}
+                    <Card className="w-full max-w-md mx-auto">
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <Upload className="mr-2 h-6 w-6" /> 
+                                Subir CSV de Vehículos
+                            </CardTitle>
+                            <CardDescription>
+                                Sube un archivo CSV con matrículas y ubicaciones para actualizar o crear vehículos.
+                                <br />
+                                <strong>Formato esperado del CSV:</strong> matricula,ubicacion
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Input
+                                id="csvFile"
+                                type="file"
+                                accept=".csv"
+                                onChange={handleFileChange}
+                                disabled={isLoading}
+                            />
+                            <Button
+                                onClick={handleUpload}
+                                disabled={!selectedFile || isLoading}
+                                className="w-full"
+                            >
+                                {isLoading ? 'Procesando...' : 'Subir y Procesar CSV'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
-            {/* Sección de Resultados de la Última Importación */}
+                <TabsContent value="delete" className="space-y-8">
+                    {/* Sección de Eliminación de CSV */}
+                    <Card className="w-full max-w-md mx-auto">
+                        <CardHeader>
+                            <CardTitle className="flex items-center">
+                                <Trash2 className="mr-2 h-6 w-6" /> 
+                                Eliminar Vehículos por CSV
+                            </CardTitle>
+                            <CardDescription>
+                                Sube un archivo CSV con matrículas para eliminar vehículos del sistema.
+                                <br />
+                                <strong>Formato esperado del CSV:</strong> matricula
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <Input
+                                id="deleteCsvFile"
+                                type="file"
+                                accept=".csv"
+                                onChange={handleDeleteFileChange}
+                                disabled={isDeleteLoading}
+                            />
+                            <Button
+                                onClick={handleDelete}
+                                disabled={!selectedDeleteFile || isDeleteLoading}
+                                className="w-full bg-red-600 hover:bg-red-700"
+                            >
+                                {isDeleteLoading ? 'Procesando...' : 'Eliminar Vehículos'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+            {/* Resultados de Importación */}
             {importResult && (
                 <Card className="w-full max-w-2xl">
                     <CardHeader>
@@ -252,42 +338,188 @@ export default function SubirCSVPage() {
                 </Card>
             )}
 
+            {/* Resultados de Eliminación */}
+            {deleteResult && (
+                <Card className="w-full max-w-2xl">
+                    <CardHeader>
+                        <CardTitle className="flex items-center">
+                            <Trash2 className="mr-2 h-6 w-6" /> 
+                            Resultados de la Eliminación
+                        </CardTitle>
+                        <CardDescription>
+                            {deleteResult.message}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {deleteResult.error ? (
+                            <div className="text-red-600 font-medium">
+                                Error: {deleteResult.error}
+                                {deleteResult.details && (
+                                    <p className="text-sm">Detalles: {deleteResult.details}</p>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-between">
+                                    <span>Estado:</span>
+                                    {renderStatusBadge(deleteResult.errors?.length > 0)}
+                                </div>
+                                <p>Total de Registros: <span className="font-semibold">{deleteResult.totalRecords}</span></p>
+                                <p>Vehículos Eliminados: <span className="font-semibold">{deleteResult.deletedCount}</span></p>
+
+                                {/* Listado de eliminados */}
+                                {deleteResult.deletedList && deleteResult.deletedList.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="font-semibold text-red-700">Eliminados ({deleteResult.deletedList.length}):</h4>
+                                        <div className="max-h-40 overflow-y-auto border border-red-300 p-2 rounded bg-red-50">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Matrícula</TableHead>
+                                                        <TableHead>Marca</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {deleteResult.deletedList.map((item, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell>{item.matricula}</TableCell>
+                                                            <TableCell>{item.marca}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Listado de no encontrados */}
+                                {deleteResult.notFoundList && deleteResult.notFoundList.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="font-semibold text-gray-700">No encontrados ({deleteResult.notFoundList.length}):</h4>
+                                        <div className="max-h-40 overflow-y-auto border border-gray-300 p-2 rounded bg-gray-50">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Matrícula</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {deleteResult.notFoundList.map((item, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell>{item.matricula}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Listado de errores */}
+                                {deleteResult.errors && deleteResult.errors.length > 0 && (
+                                    <div className="mt-4">
+                                        <h4 className="font-semibold text-red-500">
+                                            Errores en filas ({deleteResult.errors.length}):
+                                        </h4>
+                                        <div className="max-h-40 overflow-y-auto border border-red-300 p-2 rounded bg-red-50">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Matrícula</TableHead>
+                                                        <TableHead>Error</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {deleteResult.errors.map((err, index) => (
+                                                        <TableRow key={index}>
+                                                            <TableCell>{err.row?.matricula || 'N/A'}</TableCell>
+                                                            <TableCell className="text-red-500 text-sm">
+                                                                {err.error}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Sección de Información */}
             <Card className="w-full max-w-2xl">
                 <CardHeader>
                     <CardTitle className="flex items-center">
                         <Clock className="mr-2 h-6 w-6" /> 
-                        Información sobre la Importación
+                        Información sobre CSV
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        <div>
-                            <h4 className="font-semibold mb-2">Formato del CSV:</h4>
-                            <p className="text-sm text-gray-600">
-                                El archivo CSV debe tener dos columnas: <strong>matricula</strong> y <strong>ubicacion</strong>.
-                            </p>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold mb-2">Ejemplo de CSV:</h4>
-                            <div className="bg-gray-100 p-3 rounded text-sm font-mono">
-                                matricula,ubicacion<br/>
-                                1234ABC,Taller Central<br/>
-                                5678DEF,Concesionario Norte<br/>
-                                9012GHI,Almacén Sur
+                    <Tabs defaultValue="upload-info" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="upload-info">Información Subida</TabsTrigger>
+                            <TabsTrigger value="delete-info">Información Eliminación</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="upload-info" className="space-y-4 mt-4">
+                            <div>
+                                <h4 className="font-semibold mb-2">Formato del CSV para subir:</h4>
+                                <p className="text-sm text-gray-600">
+                                    El archivo CSV debe tener dos columnas: <strong>matricula</strong> y <strong>ubicacion</strong>.
+                                </p>
                             </div>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold mb-2">Comportamiento:</h4>
-                            <ul className="text-sm text-gray-600 space-y-1">
-                                <li>• Si la matrícula existe, se actualiza su ubicación</li>
-                                <li>• Si la matrícula no existe, se crea un nuevo vehículo</li>
-                                <li>• <strong>Solo se pueden asignar coches a ubicaciones ya existentes</strong></li>
-                                <li>• Si la ubicación indicada no existe, se mostrará un error y el coche no será añadido ni actualizado</li>
-                                <li>• Se registra cada cambio en el historial de ubicaciones</li>
-                            </ul>
-                        </div>
-                    </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Ejemplo de CSV:</h4>
+                                <div className="bg-gray-100 p-3 rounded text-sm font-mono">
+                                    matricula,ubicacion<br/>
+                                    1234ABC,Taller Central<br/>
+                                    5678DEF,Concesionario Norte<br/>
+                                    9012GHI,Almacén Sur
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Comportamiento:</h4>
+                                <ul className="text-sm text-gray-600 space-y-1">
+                                    <li>• Si la matrícula existe, se actualiza su ubicación</li>
+                                    <li>• Si la matrícula no existe, se crea un nuevo vehículo</li>
+                                    <li>• <strong>Solo se pueden asignar coches a ubicaciones ya existentes</strong></li>
+                                    <li>• Si la ubicación indicada no existe, se mostrará un error y el coche no será añadido ni actualizado</li>
+                                    <li>• Se registra cada cambio en el historial de ubicaciones</li>
+                                </ul>
+                            </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="delete-info" className="space-y-4 mt-4">
+                            <div>
+                                <h4 className="font-semibold mb-2">Formato del CSV para eliminar:</h4>
+                                <p className="text-sm text-gray-600">
+                                    El archivo CSV debe tener una columna: <strong>matricula</strong>.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Ejemplo de CSV:</h4>
+                                <div className="bg-gray-100 p-3 rounded text-sm font-mono">
+                                    matricula<br/>
+                                    1234ABC<br/>
+                                    5678DEF<br/>
+                                    9012GHI
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Comportamiento:</h4>
+                                <ul className="text-sm text-gray-600 space-y-1">
+                                    <li>• <strong>⚠️ CUIDADO: Esta acción es irreversible</strong></li>
+                                    <li>• Si la matrícula existe, se elimina el vehículo completamente</li>
+                                    <li>• Se eliminan todos los registros relacionados (historial, envíos)</li>
+                                    <li>• Si la matrícula no existe, se marca como &quot;no encontrada&quot;</li>
+                                    <li>• Se recomienda hacer una copia de seguridad antes de eliminar</li>
+                                </ul>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
                 </CardContent>
             </Card>
         </div>

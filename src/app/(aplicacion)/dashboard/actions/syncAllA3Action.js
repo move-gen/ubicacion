@@ -47,7 +47,7 @@ export async function syncAllPendingA3Updates() {
       cochesProcesados++;
       try {
         console.log(`[SYNC_ALL_A3] Procesando matrícula: ${coche.matricula}`);
-        const url = `http://212.64.162.34:8080/api/articulo/${coche.matricula}`;
+        const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
         const body = { Caracteristica1: coche.ubicacion?.nombreA3 };
         
         console.log(`[SYNC_ALL_A3] Enviando a A3 para ${coche.matricula}: URL=${url}, Body=${JSON.stringify(body)}`);

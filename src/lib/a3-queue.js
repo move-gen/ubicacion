@@ -38,7 +38,7 @@ export async function processA3Queue() {
       job.estado = 'procesando';
       await fs.writeFile(QUEUE_PATH, JSON.stringify(queue, null, 2));
       // Llama a la API de A3
-      const url = `http://212.64.162.34:8080/api/articulo/${job.matricula}`;
+      const url = `http://10.0.64.131:8080/api/articulo/${job.matricula}`;
       const body = { Caracteristica1: job.ubicacionA3 };
       let response = await fetchWithTimeout(url, {
         method: 'PUT',

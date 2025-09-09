@@ -316,7 +316,7 @@ export const obtenerDatosAPI = async (matricula) => {
   try {
     console.log(`SRV_LOG: Llamando a obtenerDatosAPI para matricula: ${matricula}...`);
     const response = await fetch(
-      `http://212.64.162.34:8080/api/articulo/${matricula}?externalFields=false`,
+      `http://10.0.64.131:8080/api/articulo/${matricula}?externalFields=false`,
       {
         method: "GET",
         headers: {

@@ -43,7 +43,7 @@ export async function GET(request) {
     }
     
     console.log(`[DEBUG_A3_UPDATE]: Forzando actualización A3 para matrícula: ${coche.matricula}`);
-    const url = `http://212.64.162.34:8080/api/articulo/${coche.matricula}`;
+    const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
     const body = { Caracteristica1: coche.ubicacion?.nombreA3 };
     
     console.log(`[DEBUG_A3_UPDATE]: Enviando a A3 para ${coche.matricula}: URL=${url}, Body=${JSON.stringify(body)}`);
