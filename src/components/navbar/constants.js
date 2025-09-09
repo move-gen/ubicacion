@@ -47,4 +47,10 @@ export const SIDENAV_ITEMS = [
     icon: <Icon icon="lucide:upload" width="20" height="20" />,
     requirePermissions: ["crud:ubicacion_coches"],
   },
+  {
+    title: "Admin A3",
+    path: "/admin-a3",
+    icon: <Icon icon="lucide:settings" width="20" height="20" />,
+    requirePermissions: ["crud:ubicacion_coches"],
+  },
 ];
