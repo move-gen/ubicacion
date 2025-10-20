@@ -41,10 +41,17 @@ const NotificationBell = () => {
       const fetchNotificaciones = async () => {
         try {
           const res = await fetch("/api/comprobar-a3");
+          if (!res.ok) {
+            console.error("Error al obtener notificaciones: Status", res.status);
+            setNotificaciones([]);
+            return;
+          }
           const data = await res.json();
-          setNotificaciones(data);
+          // Asegurar que siempre sea un array
+          setNotificaciones(Array.isArray(data) ? data : []);
         } catch (error) {
           console.error("Error al obtener notificaciones:", error);
+          setNotificaciones([]);
         }
       };
 
