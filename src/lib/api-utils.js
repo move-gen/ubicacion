@@ -1,6 +1,11 @@
 // src/lib/api-utils.js
 
-export async function fetchWithTimeout(url, options, timeout = 30000) { // Aumentado a 30 segundos para A3 lento
+// Constantes para integración A3
+export const A3_TIMEOUT = 25000; // 25 segundos
+export const A3_MAX_RETRIES = 3;
+export const A3_RETRY_DELAY = 2000; // 2 segundos entre reintentos
+
+export async function fetchWithTimeout(url, options, timeout = A3_TIMEOUT) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
@@ -13,26 +18,25 @@ export async function fetchWithTimeout(url, options, timeout = 30000) { // Aumen
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
-    // Lanzar el error para que pueda ser capturado por la función que llama
     throw new Error(
       error.name === "AbortError" ? "Request timed out" : error.message
     );
   }
 }
 
-export async function retry(fn, retries = 2, functionName = 'anonymous function') {
+export async function retry(fn, retries = A3_MAX_RETRIES, functionName = 'anonymous function') {
   let attempt = 0;
   while (attempt < retries) {
     try {
       return await fn();
     } catch (error) {
       attempt++;
-      // Usar el nombre de la función en el log si se proporciona
-      console.warn(`[${functionName}] Reintento ${attempt} fallido: ${error.message}`);
+      console.warn(`[${functionName}] Reintento ${attempt}/${retries} fallido: ${error.message}`);
       if (attempt >= retries) {
-        // Lanzar el error para que pueda ser capturado por la función que llama
         throw error;
       }
+      // Backoff delay entre reintentos
+      await new Promise(resolve => setTimeout(resolve, A3_RETRY_DELAY));
     }
   }
 }

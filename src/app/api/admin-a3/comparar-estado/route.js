@@ -42,7 +42,8 @@ export async function GET() {
       const promesasLote = lote.map(async (coche) => {
         try {
           // Obtener datos de A3
-          const url = `http://212.64.162.34:8080/api/articulo/${coche.matricula}`;
+          const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
+          const url = `${A3_API_URL}/api/articulo/${coche.matricula}`;
           const response = await fetchWithTimeout(url, {
             method: 'GET',
             headers: {

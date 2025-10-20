@@ -77,7 +77,7 @@ export async function POST(request) {
         idUbicacion: ubiID,
         usuarioRegistro: userRegistro,
         updatedAt: new Date(),
-        actualizadoA3: true, // Pongo el coche en cola para actualizar en el A3
+        pendienteA3: true, // Marcar como pendiente de sincronizar con A3
       },
     });
     //Si está como vendido logística, tengo que comprobar si la ubicación es correcta

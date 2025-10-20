@@ -36,9 +36,8 @@ model Coches {
   empresa              String?
   vehiculosEnvio       VehiculosEnvio[]
   vendidoLogistica     Boolean                @default(false)
-  actualizadoA3        Boolean                @default(false) //Me indica si el coche ha sido actualizado en A3
-  //Una vez se utilice el trigger del cron, se cambia el campo a false
-  numeroReintentosA3   Int?                   @default(0) //Indica el número de veces que ha sido ejecutado en el A3
+  pendienteA3          Boolean                @default(false) // true = pendiente de sincronizar con A3, false = sincronizado
+  numeroReintentosA3   Int?                   @default(0) // Número de reintentos de sincronización con A3
 
   @@index([idUbicacion]) // Adding an index to idUbicacion to optimize queries involving this field
 }

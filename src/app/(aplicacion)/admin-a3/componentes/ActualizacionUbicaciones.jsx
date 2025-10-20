@@ -202,9 +202,9 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
     
     switch (filtro) {
       case 'pendientes':
-        return vehiculosPendientes.filter(v => !v.actualizadoA3);
+        return vehiculosPendientes.filter(v => v.pendienteA3);
       case 'actualizados':
-        return vehiculosPendientes.filter(v => v.actualizadoA3);
+        return vehiculosPendientes.filter(v => !v.pendienteA3);
       case 'errores':
         return vehiculosPendientes.filter(v => v.error);
       default:
@@ -338,7 +338,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {vehiculosPendientes.filter(v => !v.actualizadoA3).length}
+              {vehiculosPendientes.filter(v => v.pendienteA3).length}
             </div>
           </CardContent>
         </Card>
@@ -349,7 +349,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {vehiculosPendientes.filter(v => v.actualizadoA3).length}
+              {vehiculosPendientes.filter(v => !v.pendienteA3).length}
             </div>
           </CardContent>
         </Card>
@@ -451,13 +451,13 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
                     <TableCell className="font-medium">{vehiculo.matricula}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        {vehiculo.actualizadoA3 ? (
+                        {!vehiculo.pendienteA3 ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : (
                           <AlertTriangle className="h-4 w-4 text-yellow-500" />
                         )}
-                        <Badge variant={vehiculo.actualizadoA3 ? 'default' : 'secondary'}>
-                          {vehiculo.actualizadoA3 ? 'Actualizado' : 'Pendiente'}
+                        <Badge variant={!vehiculo.pendienteA3 ? 'default' : 'secondary'}>
+                          {!vehiculo.pendienteA3 ? 'Sincronizado' : 'Pendiente'}
                         </Badge>
                       </div>
                     </TableCell>

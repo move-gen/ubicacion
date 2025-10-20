@@ -148,7 +148,7 @@ export async function POST(request) {
               data: {
                 idUbicacion: ubicacionId,
                 updatedAt: new Date(),
-                actualizadoA3: false,
+                pendienteA3: false,
                 usuarioRegistro: userId || "sistema",
               },
             });

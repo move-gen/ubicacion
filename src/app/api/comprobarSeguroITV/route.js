@@ -34,9 +34,10 @@ const enviarVehiculoAPI = async (matricula) => {
     redirect("/login");
   }
   const apiKey = process.env.API_KEY;
+  const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
   try {
     const response = await fetch(
-      `http://10.0.64.131:8080/api/articulo/${matricula}?externalFields=false`,
+      `${A3_API_URL}/api/articulo/${matricula}?externalFields=false`,
       {
         method: "GET",
         headers: {

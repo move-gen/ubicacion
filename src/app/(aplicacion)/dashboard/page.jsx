@@ -97,7 +97,7 @@ export default async function Dashboard() {
           <Suspense fallback={<CardPrincipalSkeleton />}>
             <CardPrincipal user={user} />
           </Suspense>
-          <CardSecundaria actualizadoA3={true} />
+          <CardSecundaria pendienteA3={true} />
           <Suspense fallback={<SkeletonCard />}>
             {dataCards.map((dataCard, index) => (
               <DataCardWithGraph key={index} {...dataCard} />

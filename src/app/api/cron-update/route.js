@@ -2,11 +2,10 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { fetchWithTimeout, retry } from "@/lib/api-utils"; // Importar utilidades
+import { syncVehicleToA3 } from "@/lib/a3-sync";
 
 // Contraseña secreta para proteger la API
 const SECRET_KEY = process.env.API_CRON;
-const apiKey = process.env.API_KEY;
 
 // Método GET para ejecutar el cron job
 export async function GET(req) {
@@ -74,11 +73,11 @@ export async function GET(req) {
     console.log("[INFO]: Cron listo para ejecutarse");
 
     // 4. Ejecutar la lógica del cron job (actualizar coches)
-    const batchSize = 1; // Tamaño del bloque reducido para pruebas y evitar timeouts
-    let lastProcessedId = 0; // ID del último coche procesado
+    const batchSize = 5; // Procesamos 5 coches por batch
+    let lastProcessedId = 0;
     let totalActualizadosConExitoEnEstaEjecucion = 0;
     let cochesIntentadosEnEstaEjecucion = 0;
-    const MAX_COCHES_POR_INVOCACION_CRON = 2; // Límite de coches a intentar por ejecución del cron
+    const MAX_COCHES_POR_INVOCACION_CRON = 5; // Límite de coches a intentar por ejecución
 
     console.log(`[CRON_A3] Iniciando. Límite por ejecución: ${MAX_COCHES_POR_INVOCACION_CRON} coches.`);
 
@@ -86,7 +85,7 @@ export async function GET(req) {
       // Traer un bloque de coches para actualizar
       const cochesParaActualizar = await prisma.coches.findMany({
         where: {
-          actualizadoA3: true,
+          pendienteA3: true,
           id: { gt: lastProcessedId },
         },
         take: batchSize,
@@ -116,56 +115,38 @@ export async function GET(req) {
         try {
           console.log(`[CRON_A3] Procesando (${cochesIntentadosEnEstaEjecucion}/${MAX_COCHES_POR_INVOCACION_CRON}): Matrícula ${coche.matricula}`);
 
-          const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
-          const body = {
-            Caracteristica1: coche.ubicacion?.nombreA3,
-          };
-
-          // Realizar la solicitud a la API externa con reintentos y timeout
-          await retry(async () => {
-            const response = await fetchWithTimeout(url, { // Usar la función importada
-              method: "PUT",
-              headers: {
-                APIKEY: apiKey,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(body),
-            });
-            if (!response.ok) {
-              let errorBodyText = "No se pudo leer el cuerpo del error de A3 (posiblemente vacío o error de red).";
-              try {
-                // Intenta clonar la respuesta para leerla sin consumirla
-                const clonedResponse = response.clone(); 
-                errorBodyText = await clonedResponse.text();
-                if (!errorBodyText) { // Si el texto está vacío
-                    errorBodyText = "El cuerpo de la respuesta de error de A3 está vacío.";
-                }
-              } catch (e) {
-                console.warn("Advertencia: No se pudo leer el cuerpo de la respuesta de error de A3.", e.message);
-              }
-              // Lanza un error más detallado
-              throw new Error(`Error al actualizar coche ${coche.matricula} (URL: ${url}) mediante la API. Status: ${response.status}. A3 Response: ${errorBodyText}`);
-            }
-          });
-
-          // Si fue exitoso, reiniciar los reintentos y marcar como actualizado
-          await prisma.coches.update({
-            where: { id: coche.id },
-            data: {
-              actualizadoA3: false,
-              numeroReintentosA3: 0,
-            },
-          });
-
-          totalActualizadosConExitoEnEstaEjecucion++;
-          console.log(
-            `[CRON_A3] Coche con matrícula ${coche.matricula} actualizado correctamente en A3 y BD local.`
+          // Sincronizar con A3 usando el módulo central
+          const result = await syncVehicleToA3(
+            coche.matricula,
+            coche.ubicacion?.nombreA3,
+            '[CRON_A3]'
           );
-        } catch (error) {
-          // El error ya debería ser más detallado gracias al throw anterior
-          console.error(`[CRON_A3] Error procesando coche ${coche.matricula}: ${error.message}`);
 
-          // Incrementar los reintentos si falla
+          if (result.success) {
+            // Marcar como sincronizado en la BD
+            await prisma.coches.update({
+              where: { id: coche.id },
+              data: {
+                pendienteA3: false,
+                numeroReintentosA3: 0,
+              },
+            });
+
+            totalActualizadosConExitoEnEstaEjecucion++;
+            console.log(`[CRON_A3] Coche con matrícula ${coche.matricula} sincronizado correctamente con A3.`);
+          } else {
+            // Incrementar reintentos si falla
+            await prisma.coches.update({
+              where: { id: coche.id },
+              data: {
+                numeroReintentosA3: { increment: 1 },
+              },
+            });
+            console.error(`[CRON_A3] Error procesando coche ${coche.matricula}: ${result.error}`);
+          }
+        } catch (error) {
+          console.error(`[CRON_A3] Error inesperado procesando coche ${coche.matricula}: ${error.message}`);
+          
           await prisma.coches.update({
             where: { id: coche.id },
             data: {

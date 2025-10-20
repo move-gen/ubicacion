@@ -13,10 +13,10 @@ export async function GET() {
     if (!permission.isGranted) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 400 });
     }
-    // ✅ Consulta a la base de datos para obtener los coches actualizados
+    // ✅ Consulta a la base de datos para obtener los coches pendientes
     const cochesActualizados = await prisma.coches.findMany({
       where: {
-        actualizadoA3: true,
+        pendienteA3: true,
       },
       select: {
         matricula: true,

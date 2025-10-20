@@ -36,7 +36,8 @@ export async function GET(request) {
       },
     });
 
-    if (!coche) {
+    if (!coche || !coche.ubicacion) {
+      console.log(`[API_COCHES] Coche o ubicación no encontrada para matrícula: ${matricula}`);
       return NextResponse.json(
         { message: "Las Palmas de Gran Canaria" },
         { status: 404 }
@@ -45,8 +46,9 @@ export async function GET(request) {
 
     return NextResponse.json({ ubicacion: coche.ubicacion.nombreAMostrar });
   } catch (error) {
+    console.error(`[API_COCHES] Error procesando solicitud para matrícula ${matricula}:`, error);
     return NextResponse.json(
-      { message: "Internal Server Error" },
+      { message: "Internal Server Error", error: error.message },
       { status: 500 }
     );
   }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server';
-import { fetchWithTimeout } from '@/lib/api-utils';
+import { syncVehicleToA3 } from '@/lib/a3-sync';
 
 export async function POST(request) {
   try {
@@ -15,11 +15,6 @@ export async function POST(request) {
     
     if (!vehiculos || !Array.isArray(vehiculos)) {
       return NextResponse.json({ error: 'Lista de vehículos requerida' }, { status: 400 });
-    }
-
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API_KEY no configurada' }, { status: 500 });
     }
 
     let procesados = 0;
@@ -54,43 +49,36 @@ export async function POST(request) {
           throw new Error('Ubicación A3 no especificada');
         }
 
-        // Actualizar ubicación en A3
-        const url = `http://212.64.162.34:8080/api/articulo/${matricula}`;
-        const body = { Caracteristica1: ubicacionA3 };
-        
-        const response = await fetchWithTimeout(url, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'APIKEY': apiKey
-          },
-          body: JSON.stringify(body)
-        }, 15000);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`A3 error: ${response.status} - ${errorText}`);
-        }
-
-        // Marcar como sincronizado en la base de datos local
-        await prisma.coches.update({
-          where: { matricula },
-          data: {
-            actualizadoA3: false, // false = sincronizado
-            numeroReintentosA3: 0,
-            updatedAt: new Date()
-          }
-        });
-
-        exitosos++;
-        detalles.push({
+        // Sincronizar con A3 usando el módulo central
+        const result = await syncVehicleToA3(
           matricula,
-          estado: 'exitoso',
-          ubicacionLocal: coche.ubicacion.nombre,
-          ubicacionA3
-        });
+          ubicacionA3,
+          '[ACTUALIZAR_UBICACIONES]'
+        );
 
-        console.log(`[ACTUALIZAR_UBICACIONES] ${matricula}: "${coche.ubicacion.nombre}" -> A3: "${ubicacionA3}"`);
+        if (result.success) {
+          // Marcar como sincronizado en la base de datos local
+          await prisma.coches.update({
+            where: { matricula },
+            data: {
+              pendienteA3: false,
+              numeroReintentosA3: 0,
+              updatedAt: new Date()
+            }
+          });
+
+          exitosos++;
+          detalles.push({
+            matricula,
+            estado: 'exitoso',
+            ubicacionLocal: coche.ubicacion.nombre,
+            ubicacionA3
+          });
+
+          console.log(`[ACTUALIZAR_UBICACIONES] ${matricula}: "${coche.ubicacion.nombre}" -> A3: "${ubicacionA3}"`);
+        } else {
+          throw new Error(result.error);
+        }
 
       } catch (error) {
         errores++;

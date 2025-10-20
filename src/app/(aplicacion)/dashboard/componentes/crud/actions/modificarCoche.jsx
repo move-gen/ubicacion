@@ -92,7 +92,7 @@ export const modificarCoche = async (formData, fila, ubicacion) => {
     ...(ubicacionCambiada && { idUbicacion: nuevaUbicacion }),
     enVenta,
     ...(data.url && { url: data.url }), // Añadir `url` solo si está definido
-    ...(ubicacionCambiada && { actualizadoA3: true }),
+    ...(ubicacionCambiada && { pendienteA3: true }),
     updatedAt: new Date(),
     usuarioRegistro: `${user.given_name} ${user.family_name}`,
   };

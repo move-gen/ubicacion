@@ -13,7 +13,7 @@ export async function GET() {
     // Obtener vehículos que necesitan actualización de ubicación en A3
     const vehiculos = await prisma.coches.findMany({
       where: {
-        actualizadoA3: true // Pendientes de sincronización
+        pendienteA3: true // Pendientes de sincronización
       },
       include: {
         ubicacion: {
@@ -30,7 +30,7 @@ export async function GET() {
       matricula: vehiculo.matricula,
       ubicacionLocal: vehiculo.ubicacion.nombre,
       ubicacionA3: vehiculo.ubicacion.nombreA3,
-      actualizadoA3: vehiculo.actualizadoA3,
+      pendienteA3: vehiculo.pendienteA3,
       numeroReintentosA3: vehiculo.numeroReintentosA3 || 0,
       ultimaActualizacion: vehiculo.updatedAt,
       error: vehiculo.numeroReintentosA3 >= 3 ? 'Máximo de reintentos alcanzado' : null

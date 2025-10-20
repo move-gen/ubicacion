@@ -2,6 +2,21 @@
 
 Este módulo proporciona herramientas avanzadas para la gestión y sincronización de vehículos con el sistema A3.
 
+## Arquitectura de Sincronización
+
+### Módulo Central (`src/lib/a3-sync.js`)
+Todas las operaciones de sincronización con A3 ahora utilizan un módulo centralizado que proporciona:
+- Validación unificada de datos
+- Manejo consistente de errores
+- Logs estandarizados
+- Timeouts y reintentos configurados centralmente
+- URL de A3 configurable vía `A3_API_URL` (env variable)
+
+### Estados de Sincronización
+- `pendienteA3: false` = Vehículo sincronizado con A3
+- `pendienteA3: true` = Vehículo pendiente de sincronizar con A3
+- `numeroReintentosA3` = Contador de intentos de sincronización
+
 ## Características Principales
 
 ### 1. Comparación de Estado
@@ -39,14 +54,22 @@ Este módulo proporciona herramientas avanzadas para la gestión y sincronizaci�
 
 ## Configuración
 
-### Tamaños de Lote Recomendados
-- **Nombres**: 10-20 vehículos por lote
-- **Ubicaciones**: 3-5 vehículos por lote (más crítico)
+### Variables de Entorno
+```bash
+A3_API_URL=http://212.64.162.34:8080  # URL de la API de A3
+API_KEY=<tu-api-key>                   # API Key para A3
+```
 
-### Timeouts
-- **Consulta A3**: 10-15 segundos
-- **Actualización A3**: 15-30 segundos
-- **Pausa entre lotes**: 1-2 segundos
+### Tamaños de Lote
+- **Nombres**: 10-20 vehículos por lote
+- **Ubicaciones**: 5 vehículos por lote
+- **Cron Automático**: 5 vehículos por ejecución
+- **Sincronización Manual**: 5 vehículos por lote
+
+### Timeouts y Reintentos
+- **Timeout por defecto**: 25 segundos
+- **Máximo de reintentos**: 3 intentos
+- **Delay entre reintentos**: 2 segundos
 
 ## Uso
 

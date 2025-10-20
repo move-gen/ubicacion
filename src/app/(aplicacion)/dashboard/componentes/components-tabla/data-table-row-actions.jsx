@@ -59,7 +59,7 @@ export function DataTableRowActions({
         icon: <RefreshCw width={15} height={15} color="gray" />,
         tooltip: "Escanee el vehículo para sincronizar con A3",
       };
-    } else if (!fila.actualizadoA3) {
+    } else if (!fila.pendienteA3) {
       return {
         icon: <RefreshCw width={15} height={15} color="green" />,
         tooltip: "Sincronizado con A3",

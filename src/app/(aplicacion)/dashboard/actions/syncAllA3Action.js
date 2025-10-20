@@ -1,10 +1,10 @@
 "use server";
 import prisma from "@/lib/db";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
-import { fetchWithTimeout, retry } from "@/lib/api-utils";
+import { syncVehicleToA3 } from "@/lib/a3-sync";
 import { revalidatePath } from "next/cache";
 
-const BATCH_SIZE_A3_SYNC = 2; // Reducido a 2 coches por llamada
+const BATCH_SIZE_A3_SYNC = 5; // Aumentado a 5 con el módulo unificado
 
 export async function syncAllPendingA3Updates() {
   const { isAuthenticated, getPermission } = getKindeServerSession();
@@ -19,12 +19,6 @@ export async function syncAllPendingA3Updates() {
   //   return { error: "No tienes permiso para esta acción." };
   // }
 
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("[SYNC_ALL_A3] API_KEY de A3 no configurada.");
-    return { error: "Error de configuración del servidor (A3_KEY)." };
-  }
-
   let cochesProcesados = 0;
   let cochesExitosos = 0;
   let cochesFallidos = 0;
@@ -32,7 +26,7 @@ export async function syncAllPendingA3Updates() {
 
   try {
     const cochesParaActualizar = await prisma.coches.findMany({
-      where: { actualizadoA3: true },
+      where: { pendienteA3: true },
       take: BATCH_SIZE_A3_SYNC, // Procesar solo un lote
       select: { id: true, matricula: true, ubicacion: { select: { nombreA3: true } } },
     });
@@ -45,66 +39,43 @@ export async function syncAllPendingA3Updates() {
 
     for (const coche of cochesParaActualizar) {
       cochesProcesados++;
+      
       try {
-        console.log(`[SYNC_ALL_A3] Procesando matrícula: ${coche.matricula}`);
-        const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
-        const body = { Caracteristica1: coche.ubicacion?.nombreA3 };
-        
-        console.log(`[SYNC_ALL_A3] Enviando a A3 para ${coche.matricula}: URL=${url}, Body=${JSON.stringify(body)}`);
+        // Sincronizar con A3 usando el módulo central
+        const result = await syncVehicleToA3(
+          coche.matricula,
+          coche.ubicacion?.nombreA3,
+          '[SYNC_ALL_A3]'
+        );
 
-        let a3CallSuccessful = false;
-        let a3ResponseStatus = 0;
-        let a3ResponseBody = "";
-
-        await retry(async () => {
-          const response = await fetchWithTimeout(url, {
-            method: "PUT",
-            headers: { APIKEY: apiKey, "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          a3ResponseStatus = response.status;
-          try {
-            const clonedResponse = response.clone();
-            a3ResponseBody = await clonedResponse.text();
-            if (!a3ResponseBody) a3ResponseBody = "Respuesta de A3 vacía.";
-          } catch (e) { 
-            a3ResponseBody = "No se pudo leer respuesta de A3.";
-            console.warn("[SYNC_ALL_A3]: Advertencia: No se pudo leer el cuerpo de la respuesta de A3.", e.message);
-          }
-
-          if (!response.ok) {
-            throw new Error(`Error API A3. Status: ${a3ResponseStatus}. Resp: ${a3ResponseBody}`);
-          }
-          a3CallSuccessful = true;
-          console.log(`[SYNC_ALL_A3]: PUT a A3 para ${coche.matricula} OK (Status ${a3ResponseStatus}). Resp: ${a3ResponseBody}`);
-        }, 2, `syncAllA3_A3Call_${coche.matricula}`);
-
-        if (a3CallSuccessful) {
+        if (result.success) {
           await prisma.coches.update({
             where: { id: coche.id },
-            data: { actualizadoA3: false, numeroReintentosA3: 0 },
+            data: { pendienteA3: false, numeroReintentosA3: 0 },
           });
-          console.log(`[SYNC_ALL_A3]: Matrícula ${coche.matricula} marcada como actualizada en BD.`);
+          console.log(`[SYNC_ALL_A3]: Matrícula ${coche.matricula} marcada como sincronizada en BD.`);
           cochesExitosos++;
         } else {
-          // Esto no debería ocurrir si retry lanza error, pero por si acaso
           cochesFallidos++;
-          erroresDetallados.push({ matricula: coche.matricula, error: "La llamada a A3 no fue exitosa pero no lanzó excepción en retry."});
+          erroresDetallados.push({ matricula: coche.matricula, error: result.error });
+          await prisma.coches.update({
+            where: { id: coche.id },
+            data: { numeroReintentosA3: { increment: 1 } },
+          });
         }
       } catch (error) {
         cochesFallidos++;
-        const errorMessage = error.message || "Error desconocido procesando coche.";
+        const errorMessage = error.message || "Error desconocido procesando coche";
         console.error(`[SYNC_ALL_A3]: Error para ${coche.matricula}: ${errorMessage}`);
         erroresDetallados.push({ matricula: coche.matricula, error: errorMessage });
-        // Opcional: Incrementar numeroReintentosA3 en la BD para este coche
         await prisma.coches.update({
-            where: { id: coche.id },
-            data: { numeroReintentosA3: { increment: 1 } },
+          where: { id: coche.id },
+          data: { numeroReintentosA3: { increment: 1 } },
         });
       }
     }
 
-    const aunQuedanPendientes = await prisma.coches.count({ where: { actualizadoA3: true } });
+    const aunQuedanPendientes = await prisma.coches.count({ where: { pendienteA3: true } });
 
     revalidatePath("/dashboard");
     return { 

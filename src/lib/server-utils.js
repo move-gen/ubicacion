@@ -128,7 +128,7 @@ export const getCombinedCochesData = async () => {
           marca: true,
           usuarioRegistro: true,
           updatedAt: true,
-          actualizadoA3: true,
+          pendienteA3: true,
           ubicacion: {
             select: {
               nombre: true,
@@ -287,7 +287,7 @@ export const getCocheDetails = async (idCoche) => {
         marca: true,
         matricula: true,
         empresa: true,
-        actualizadoA3: true,
+        pendienteA3: true,
       },
     });
     console.log("SRV_LOG: getCocheDetails completado.");
@@ -309,6 +309,7 @@ export const obtenerDatosAPI = async (matricula) => {
     redirect("/login"); 
   }
   const apiKey = process.env.API_KEY;
+  const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
   if (!apiKey) {
     console.error("SRV_LOG: obtenerDatosAPI - API_KEY no está configurada.");
     throw new Error("API_KEY no está configurada.");
@@ -316,7 +317,7 @@ export const obtenerDatosAPI = async (matricula) => {
   try {
     console.log(`SRV_LOG: Llamando a obtenerDatosAPI para matricula: ${matricula}...`);
     const response = await fetch(
-      `http://10.0.64.131:8080/api/articulo/${matricula}?externalFields=false`,
+      `${A3_API_URL}/api/articulo/${matricula}?externalFields=false`,
       {
         method: "GET",
         headers: {

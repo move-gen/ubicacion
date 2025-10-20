@@ -51,7 +51,8 @@ export async function POST(request) {
         }
 
         // Obtener datos de A3
-        const url = `http://212.64.162.34:8080/api/articulo/${matricula}`;
+        const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
+        const url = `${A3_API_URL}/api/articulo/${matricula}`;
         const response = await fetchWithTimeout(url, {
           method: 'GET',
           headers: {

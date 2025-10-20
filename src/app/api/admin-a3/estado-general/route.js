@@ -20,19 +20,19 @@ export async function GET() {
     ] = await Promise.all([
       prisma.coches.count(),
       prisma.coches.count({
-        where: { actualizadoA3: false }
+        where: { pendienteA3: false }
       }),
       prisma.coches.count({
-        where: { actualizadoA3: true }
+        where: { pendienteA3: true }
       }),
       prisma.coches.count({
         where: { 
-          actualizadoA3: true,
+          pendienteA3: true,
           numeroReintentosA3: { gte: 3 }
         }
       }),
       prisma.coches.findFirst({
-        where: { actualizadoA3: false },
+        where: { pendienteA3: false },
         orderBy: { updatedAt: 'desc' },
         select: { updatedAt: true }
       })

@@ -73,7 +73,7 @@ export default async function Coches({ params }) {
   const respuestaActualizado =
     ultimaUbicacion.ubicacion.nombre === "Sin Ubicación"
       ? "Escanee el vehículo para sincronizar"
-      : detallesCoche.actualizadoA3
+      : detallesCoche.pendienteA3
       ? "Pendiente de sincronización con el A3"
       : "Sincronizado con el A3";
   return (
@@ -161,7 +161,7 @@ export default async function Coches({ params }) {
                           className={`p-2 mt-3 border-2 rounded-md ${
                             ultimaUbicacion.ubicacion.nombre === "Sin Ubicación"
                               ? ""
-                              : !detallesCoche.actualizadoA3
+                              : !detallesCoche.pendienteA3
                               ? "border-green-500"
                               : "border-red-500"
                           }`}
@@ -170,7 +170,7 @@ export default async function Coches({ params }) {
                             {ultimaUbicacion.ubicacion.nombre ===
                             "Sin Ubicación" ? (
                               <RefreshCw width={15} height={15} color="black" />
-                            ) : !detallesCoche.actualizadoA3 ? (
+                            ) : !detallesCoche.pendienteA3 ? (
                               <RefreshCw width={15} height={15} color="green" />
                             ) : (
                               <RefreshCwOff

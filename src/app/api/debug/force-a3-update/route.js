@@ -35,15 +35,16 @@ export async function GET(request) {
   try {
     const coche = await prisma.coches.findUnique({
       where: { matricula: matricula },
-      select: { id: true, matricula: true, actualizadoA3: true, ubicacion: { select: { nombreA3: true } } },
+      select: { id: true, matricula: true, pendienteA3: true, ubicacion: { select: { nombreA3: true } } },
     });
 
     if (!coche) {
       return NextResponse.json({ error: `Coche con matrícula ${matricula} no encontrado.` }, { status: 404 });
     }
     
+    const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
     console.log(`[DEBUG_A3_UPDATE]: Forzando actualización A3 para matrícula: ${coche.matricula}`);
-    const url = `http://10.0.64.131:8080/api/articulo/${coche.matricula}`;
+    const url = `${A3_API_URL}/api/articulo/${coche.matricula}`;
     const body = { Caracteristica1: coche.ubicacion?.nombreA3 };
     
     console.log(`[DEBUG_A3_UPDATE]: Enviando a A3 para ${coche.matricula}: URL=${url}, Body=${JSON.stringify(body)}`);
@@ -79,9 +80,9 @@ export async function GET(request) {
     if (a3CallSuccessful) {
       await prisma.coches.update({
         where: { id: coche.id },
-        data: { actualizadoA3: false, numeroReintentosA3: 0 },
+        data: { pendienteA3: false, numeroReintentosA3: 0 },
       });
-      console.log(`[DEBUG_A3_UPDATE]: Matrícula ${coche.matricula} marcada como actualizada en BD local.`);
+      console.log(`[DEBUG_A3_UPDATE]: Matrícula ${coche.matricula} marcada como sincronizada en BD local.`);
     }
     
     return NextResponse.json({ 
