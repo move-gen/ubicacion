@@ -132,20 +132,26 @@ export async function getVehicleFromA3(matricula, logPrefix = '[A3_SYNC]') {
   console.log(`${logPrefix} Obteniendo datos de ${matricula} desde A3`);
 
   try {
-    const response = await fetchWithTimeout(url, {
-      method: 'GET',
-      headers: {
-        'APIKEY': apiKey,
-        'Content-Type': 'application/json'
+    let data;
+    
+    // ✅ IMPROVED: GET con timeout aumentado y reintentos
+    await retry(async () => {
+      const response = await fetchWithTimeout(url, {
+        method: 'GET',
+        headers: {
+          'APIKEY': apiKey,
+          'Content-Type': 'application/json'
+        }
+      }, 20000); // ✅ 20 segundos para GET (el doble que PUT)
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'No disponible');
+        throw new Error(`Error API A3. Status: ${response.status}. Respuesta: ${errorText}`);
       }
-    }, A3_TIMEOUT);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Error API A3. Status: ${response.status}. Respuesta: ${errorText}`);
-    }
+      data = await response.json();
+    }, undefined, `getVehicleFromA3_${matricula}`);
 
-    const data = await response.json();
     console.log(`${logPrefix} Datos obtenidos exitosamente para ${matricula}`);
 
     return {

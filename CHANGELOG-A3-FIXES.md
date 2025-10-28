@@ -102,13 +102,68 @@ await new Promise(resolve => setTimeout(resolve, 200));  // sincronizar
 
 // DESPUÉS
 await new Promise(resolve => setTimeout(resolve, 1500)); // ✅ actualizar
-await new Promise(resolve => setTimeout(resolve, 1000)); // ✅ sincronizar
+await new Promise(resolve => setTimeout(resolve, 1500)); // ✅ sincronizar
 ```
 
 **Beneficios**:
 - Reduce carga sobre A3 en operaciones por lotes
 - Previene throttling por parte del servidor A3
 - Mejora estabilidad en sincronizaciones masivas
+
+---
+
+### 7. ⏱️ **Timeouts Diferenciados GET vs PUT** (NUEVO)
+
+**Problema identificado**: Las operaciones GET a A3 son más lentas que PUT, causando timeouts con el nuevo límite de 10s.
+
+**Archivos actualizados**:
+- `src/app/api/admin-a3/sincronizar-nombres/route.js`
+- `src/lib/a3-sync.js` (función `getVehicleFromA3`)
+
+**Solución implementada**:
+```javascript
+// PUT (actualizar ubicación)
+fetchWithTimeout(url, {...}, 10000); // 10 segundos
+
+// GET (obtener datos completos)
+fetchWithTimeout(url, {...}, 20000); // ✅ 20 segundos
+```
+
+**Beneficios**:
+- GET tiene el doble de tiempo para completarse
+- Reduce timeouts en sincronización de nombres
+- Mantiene rapidez en operaciones PUT críticas
+
+---
+
+### 8. 🔄 **Reintentos en Operaciones GET** (NUEVO)
+
+**Problema**: `sincronizar-nombres` no usaba la función `retry()`, fallando inmediatamente en timeouts.
+
+**Archivo**: `src/app/api/admin-a3/sincronizar-nombres/route.js`
+
+**Solución**:
+```javascript
+// ANTES: Sin reintentos
+const response = await fetchWithTimeout(url, {...}, 10000);
+
+// DESPUÉS: Con reintentos automáticos
+await retry(async () => {
+  const response = await fetchWithTimeout(url, {...}, 20000);
+  // ... validación y procesamiento
+}, undefined, `SINCRONIZAR_NOMBRES_${matricula}`);
+```
+
+**Comportamiento**:
+- Primer intento: 20s timeout
+- Si falla: espera 2s, reintenta
+- Si falla: espera 4s, reintenta
+- Total: hasta 3 intentos con ~26s por vehículo máximo
+
+**Beneficios**:
+- Tasa de éxito dramáticamente mayor
+- Manejo robusto de problemas temporales de red
+- Logs detallados de cada reintento
 
 ---
 
@@ -128,7 +183,7 @@ await new Promise(resolve => setTimeout(resolve, 1000)); // ✅ sincronizar
 
 ---
 
-### 7. 📋 **Nuevo Campo en Base de Datos**
+### 9. 📋 **Nuevo Campo en Base de Datos**
 
 **Archivo**: `prisma/schema.prisma`
 
@@ -180,10 +235,11 @@ model Coches {
 
 | Operación | Timeout | Reintentos | Delay entre reintentos |
 |-----------|---------|------------|----------------------|
-| **Sincronización A3** | 10s | 2 | 2s, 4s (exponencial) |
+| **PUT (Actualizar ubicación)** | 10s | 2 | 2s, 4s (exponencial) |
+| **GET (Obtener datos)** | 20s | 2 | 2s, 4s (exponencial) |
 | **Intervalo mínimo** | - | - | 5 minutos |
-| **Lotes Admin** | 10s | 2 | 1.5s entre vehículos |
-| **Sincronizar Nombres** | 10s | 0 | 1s entre vehículos |
+| **Lotes Admin (actualizar)** | 10s | 2 | 1.5s entre vehículos |
+| **Lotes Admin (sincronizar)** | 20s | 2 | 1.5s entre vehículos |
 
 ---
 

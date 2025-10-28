@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server';
-import { fetchWithTimeout } from '@/lib/api-utils';
+import { fetchWithTimeout, retry } from '@/lib/api-utils'; // ✅ ADDED: retry para reintentos
 
 export async function POST(request) {
   try {
@@ -50,22 +50,29 @@ export async function POST(request) {
           throw new Error('Vehículo no encontrado en la base de datos');
         }
 
-        // Obtener datos de A3
+        // ✅ IMPROVED: Obtener datos de A3 con reintentos y timeout aumentado para GET
         const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
         const url = `${A3_API_URL}/api/articulo/${matricula}`;
-        const response = await fetchWithTimeout(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'APIKEY': apiKey
+        
+        let datosA3;
+        await retry(async () => {
+          console.log(`[SINCRONIZAR_NOMBRES] Obteniendo datos de A3 para ${matricula}...`);
+          const response = await fetchWithTimeout(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'APIKEY': apiKey
+            }
+          }, 20000); // ✅ 20 segundos para GET (más que los 10s de PUT)
+
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => 'No disponible');
+            throw new Error(`A3 error ${response.status}: ${errorText}`);
           }
-        }, 10000);
 
-        if (!response.ok) {
-          throw new Error(`A3 error: ${response.status}`);
-        }
+          datosA3 = await response.json();
+        }, undefined, `SINCRONIZAR_NOMBRES_${matricula}`); // ✅ Función con reintentos
 
-        const datosA3 = await response.json();
         const nombreA3 = datosA3.Nombre || '';
         const nombreAnterior = coche.marca || '';
 
@@ -96,6 +103,7 @@ export async function POST(request) {
             nombreAnterior,
             nombreNuevo: nombreA3
           });
+          console.log(`[SINCRONIZAR_NOMBRES] ${matricula}: Sin cambios (nombre ya es "${nombreA3}")`);
         }
 
       } catch (error) {
@@ -110,7 +118,7 @@ export async function POST(request) {
       }
 
       // ✅ IMPROVED: Pausa aumentada entre vehículos para evitar sobrecarga de A3
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 1s entre requests (antes 200ms)
+      await new Promise(resolve => setTimeout(resolve, 1500)); // ✅ 1.5s entre requests (antes 1s)
     }
 
     console.log(`[SINCRONIZAR_NOMBRES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores`);
