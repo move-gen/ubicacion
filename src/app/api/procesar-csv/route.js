@@ -148,7 +148,7 @@ export async function POST(request) {
               data: {
                 idUbicacion: ubicacionId,
                 updatedAt: new Date(),
-                pendienteA3: false,
+                pendienteA3: true, // ✅ FIXED: Marcar como pendiente para sincronización con A3
                 usuarioRegistro: userId || "sistema",
               },
             });
@@ -161,6 +161,7 @@ export async function POST(request) {
                 enVenta: false,
                 createdAt: new Date(),
                 usuarioRegistro: userId || "sistema",
+                pendienteA3: true, // ✅ FIXED: Marcar como pendiente para sincronización con A3
               },
             });
           }

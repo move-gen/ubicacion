@@ -25,3 +25,4 @@ fi
 
 echo "✅ Migraciones aplicadas correctamente"
 
+

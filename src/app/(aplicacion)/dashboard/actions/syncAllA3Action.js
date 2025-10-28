@@ -28,7 +28,7 @@ export async function syncAllPendingA3Updates() {
     const cochesParaActualizar = await prisma.coches.findMany({
       where: { pendienteA3: true },
       take: BATCH_SIZE_A3_SYNC, // Procesar solo un lote
-      select: { id: true, matricula: true, ubicacion: { select: { nombreA3: true } } },
+      select: { id: true, matricula: true, lastA3SyncAttempt: true, ubicacion: { select: { nombreA3: true } } },
     });
 
     if (cochesParaActualizar.length === 0) {
@@ -41,12 +41,27 @@ export async function syncAllPendingA3Updates() {
       cochesProcesados++;
       
       try {
+        // ✅ IMPROVED: Actualizar timestamp antes del intento
+        await prisma.coches.update({
+          where: { id: coche.id },
+          data: { lastA3SyncAttempt: new Date() },
+        });
+
         // Sincronizar con A3 usando el módulo central
         const result = await syncVehicleToA3(
           coche.matricula,
           coche.ubicacion?.nombreA3,
-          '[SYNC_ALL_A3]'
+          '[SYNC_ALL_A3]',
+          coche.lastA3SyncAttempt,
+          false // Respetar intervalo mínimo
         );
+
+        if (result.skipped) {
+          // ✅ NEW: Manejar caso de reintento demasiado pronto
+          console.log(`[SYNC_ALL_A3] Coche ${coche.matricula} omitido: ${result.error}`);
+          cochesProcesados--; // No contar como procesado
+          continue;
+        }
 
         if (result.success) {
           await prisma.coches.update({

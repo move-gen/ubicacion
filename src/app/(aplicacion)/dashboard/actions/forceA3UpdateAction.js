@@ -20,18 +20,26 @@ export async function forceA3UpdateForCar(matricula) {
   try {
     const coche = await prisma.coches.findUnique({
       where: { matricula: matricula },
-      select: { id: true, matricula: true, ubicacion: { select: { nombreA3: true } } },
+      select: { id: true, matricula: true, lastA3SyncAttempt: true, ubicacion: { select: { nombreA3: true } } },
     });
 
     if (!coche) {
       return { error: `Coche con matrícula ${matricula} no encontrado.` };
     }
 
+    // ✅ IMPROVED: Actualizar timestamp antes del intento
+    await prisma.coches.update({
+      where: { id: coche.id },
+      data: { lastA3SyncAttempt: new Date() },
+    });
+
     // Sincronizar con A3 usando el módulo central
     const result = await syncVehicleToA3(
       coche.matricula,
       coche.ubicacion?.nombreA3,
-      '[FORCE_A3_ACTION]'
+      '[FORCE_A3_ACTION]',
+      coche.lastA3SyncAttempt,
+      true // ✅ FORCE: Ignorar intervalo mínimo en forzado manual
     );
 
     if (result.success) {

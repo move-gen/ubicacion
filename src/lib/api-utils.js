@@ -1,9 +1,9 @@
 // src/lib/api-utils.js
 
 // Constantes para integración A3
-export const A3_TIMEOUT = 25000; // 25 segundos
-export const A3_MAX_RETRIES = 3;
-export const A3_RETRY_DELAY = 2000; // 2 segundos entre reintentos
+export const A3_TIMEOUT = 10000; // ✅ REDUCED: 10 segundos (antes 25s)
+export const A3_MAX_RETRIES = 2; // ✅ REDUCED: 2 intentos (antes 3)
+export const A3_RETRY_BASE_DELAY = 2000; // 2 segundos base para backoff exponencial
 
 export async function fetchWithTimeout(url, options, timeout = A3_TIMEOUT) {
   const controller = new AbortController();
@@ -35,8 +35,10 @@ export async function retry(fn, retries = A3_MAX_RETRIES, functionName = 'anonym
       if (attempt >= retries) {
         throw error;
       }
-      // Backoff delay entre reintentos
-      await new Promise(resolve => setTimeout(resolve, A3_RETRY_DELAY));
+      // ✅ IMPROVED: Exponential backoff (2s, 4s, 8s...)
+      const delay = A3_RETRY_BASE_DELAY * Math.pow(2, attempt - 1);
+      console.log(`[${functionName}] Esperando ${delay}ms antes del siguiente reintento...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 }

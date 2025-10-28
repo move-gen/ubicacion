@@ -4,15 +4,18 @@
 import { fetchWithTimeout, retry, A3_TIMEOUT } from '@/lib/api-utils';
 
 const A3_API_URL = process.env.A3_API_URL || 'http://212.64.162.34:8080';
+const MIN_RETRY_INTERVAL_MS = 5 * 60 * 1000; // ✅ NEW: 5 minutos mínimo entre reintentos
 
 /**
  * Sincroniza un vehículo con A3
  * @param {string} matricula - Matrícula del vehículo
  * @param {string} ubicacionA3 - Ubicación a actualizar en A3 (nombreA3)
  * @param {string} logPrefix - Prefijo para los logs (ej: '[CRON_A3]')
- * @returns {Promise<{success: boolean, status?: number, responseBody?: string, error?: string}>}
+ * @param {Date|null} lastAttempt - Último intento de sincronización (opcional, para validación)
+ * @param {boolean} forceSync - Forzar sincronización ignorando el intervalo mínimo (default: false)
+ * @returns {Promise<{success: boolean, status?: number, responseBody?: string, error?: string, skipped?: boolean}>}
  */
-export async function syncVehicleToA3(matricula, ubicacionA3, logPrefix = '[A3_SYNC]') {
+export async function syncVehicleToA3(matricula, ubicacionA3, logPrefix = '[A3_SYNC]', lastAttempt = null, forceSync = false) {
   const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
@@ -31,6 +34,20 @@ export async function syncVehicleToA3(matricula, ubicacionA3, logPrefix = '[A3_S
     const error = `Vehículo ${matricula}: ubicación sin nombreA3 configurado`;
     console.error(`${logPrefix} ${error}`);
     throw new Error(error);
+  }
+
+  // ✅ NEW: Validar intervalo mínimo entre reintentos (a menos que se fuerce)
+  if (!forceSync && lastAttempt) {
+    const timeSinceLastAttempt = Date.now() - new Date(lastAttempt).getTime();
+    if (timeSinceLastAttempt < MIN_RETRY_INTERVAL_MS) {
+      const remainingMinutes = Math.ceil((MIN_RETRY_INTERVAL_MS - timeSinceLastAttempt) / 60000);
+      console.log(`${logPrefix} Vehículo ${matricula}: último intento hace ${Math.floor(timeSinceLastAttempt / 60000)}min. Esperando ${remainingMinutes}min más.`);
+      return {
+        success: false,
+        skipped: true,
+        error: `Reintento demasiado pronto. Esperar ${remainingMinutes} minutos.`
+      };
+    }
   }
 
   const url = `${A3_API_URL}/api/articulo/${matricula}`;
@@ -144,4 +161,5 @@ export async function getVehicleFromA3(matricula, logPrefix = '[A3_SYNC]') {
     };
   }
 }
+
 

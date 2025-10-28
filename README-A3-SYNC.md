@@ -26,9 +26,10 @@ Todas las operaciones de sincronización utilizan este módulo centralizado que 
 ### Constantes Configurables (`src/lib/api-utils.js`)
 
 ```javascript
-export const A3_TIMEOUT = 25000;      // 25 segundos
-export const A3_MAX_RETRIES = 3;      // 3 intentos
-export const A3_RETRY_DELAY = 2000;   // 2 segundos entre reintentos
+export const A3_TIMEOUT = 10000;           // ✅ 10 segundos (reducido de 25s)
+export const A3_MAX_RETRIES = 2;           // ✅ 2 intentos (reducido de 3)
+export const A3_RETRY_BASE_DELAY = 2000;   // ✅ 2 segundos base para exponential backoff
+export const MIN_RETRY_INTERVAL_MS = 300000; // ✅ 5 minutos mínimo entre reintentos
 ```
 
 ## Sistemas de Sincronización
@@ -220,11 +221,26 @@ Ejecuta el cron de sincronización automática
 ### Problema: Vehículos con muchos reintentos
 **Solución**: Revisar en Admin A3 → Comparar Estado para identificar el problema específico. Puede ser una diferencia de nomenclatura entre la app y A3.
 
+## Mejoras Recientes (Octubre 2024)
+
+### ✅ Implementadas
+
+1. **Timeouts Reducidos**: De 25s a 10s para evitar bloqueos prolongados
+2. **Exponential Backoff**: Delays progresivos (2s, 4s, 8s) en reintentos
+3. **Prevención de Reintentos Rápidos**: Intervalo mínimo de 5 minutos entre intentos
+4. **Rate Limiting Mejorado**: Delays aumentados en operaciones por lotes
+5. **Tracking de Intentos**: Nuevo campo `lastA3SyncAttempt` en base de datos
+6. **Bug Fix Crítico**: CSV uploads ahora marcan correctamente `pendienteA3: true`
+
+Ver `CHANGELOG-A3-FIXES.md` para detalles completos.
+
 ## Mejoras Futuras
 
 - [ ] Dashboard de monitoreo en tiempo real
 - [ ] Alertas automáticas para vehículos con errores
+- [ ] Sistema de colas robusto (Upstash/SQS)
 - [ ] Sincronización bidireccional automática
 - [ ] Webhooks desde A3 para actualizaciones instantáneas
 - [ ] Cola de prioridad para vehículos críticos
+
 

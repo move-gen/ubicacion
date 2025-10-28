@@ -109,8 +109,8 @@ export async function POST(request) {
         console.error(`[SINCRONIZAR_NOMBRES] Error en ${matricula}:`, error.message);
       }
 
-      // Pausa pequeña entre vehículos
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // ✅ IMPROVED: Pausa aumentada entre vehículos para evitar sobrecarga de A3
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1s entre requests (antes 200ms)
     }
 
     console.log(`[SINCRONIZAR_NOMBRES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores`);

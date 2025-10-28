@@ -49,12 +49,34 @@ export async function POST(request) {
           throw new Error('Ubicación A3 no especificada');
         }
 
+        // ✅ IMPROVED: Actualizar timestamp antes del intento
+        await prisma.coches.update({
+          where: { matricula },
+          data: { lastA3SyncAttempt: new Date() }
+        });
+
         // Sincronizar con A3 usando el módulo central
         const result = await syncVehicleToA3(
           matricula,
           ubicacionA3,
-          '[ACTUALIZAR_UBICACIONES]'
+          '[ACTUALIZAR_UBICACIONES]',
+          coche.lastA3SyncAttempt,
+          false // Respetar intervalo mínimo
         );
+
+        if (result.skipped) {
+          // ✅ NEW: Manejar caso de reintento demasiado pronto
+          detalles.push({
+            matricula,
+            estado: 'omitido',
+            ubicacionLocal: coche.ubicacion.nombre,
+            ubicacionA3,
+            error: result.error
+          });
+          console.log(`[ACTUALIZAR_UBICACIONES] ${matricula} omitido: ${result.error}`);
+          procesados--; // No contar como procesado
+          continue;
+        }
 
         if (result.success) {
           // Marcar como sincronizado en la base de datos local
@@ -103,8 +125,8 @@ export async function POST(request) {
         console.error(`[ACTUALIZAR_UBICACIONES] Error en ${matricula}:`, error.message);
       }
 
-      // Pausa entre vehículos para evitar sobrecarga
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // ✅ IMPROVED: Pausa aumentada entre vehículos para evitar sobrecarga de A3
+      await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s entre requests
     }
 
     console.log(`[ACTUALIZAR_UBICACIONES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores`);

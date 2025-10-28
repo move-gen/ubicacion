@@ -92,6 +92,7 @@ export async function GET(req) {
         select: {
           id: true,
           matricula: true,
+          lastA3SyncAttempt: true, // ✅ NEW: Incluir timestamp del último intento
           ubicacion: {
             select: {
               nombreA3: true,
@@ -115,12 +116,26 @@ export async function GET(req) {
         try {
           console.log(`[CRON_A3] Procesando (${cochesIntentadosEnEstaEjecucion}/${MAX_COCHES_POR_INVOCACION_CRON}): Matrícula ${coche.matricula}`);
 
+          // ✅ IMPROVED: Actualizar timestamp antes del intento
+          await prisma.coches.update({
+            where: { id: coche.id },
+            data: { lastA3SyncAttempt: new Date() },
+          });
+
           // Sincronizar con A3 usando el módulo central
           const result = await syncVehicleToA3(
             coche.matricula,
             coche.ubicacion?.nombreA3,
-            '[CRON_A3]'
+            '[CRON_A3]',
+            coche.lastA3SyncAttempt, // ✅ NEW: Pasar último intento para validación
+            false // No forzar (respetar intervalo mínimo)
           );
+
+          if (result.skipped) {
+            // ✅ NEW: Manejar caso de reintento demasiado pronto
+            console.log(`[CRON_A3] Coche ${coche.matricula} omitido: ${result.error}`);
+            continue; // No contar como intento fallido
+          }
 
           if (result.success) {
             // Marcar como sincronizado en la BD

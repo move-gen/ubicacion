@@ -35,7 +35,7 @@ export async function GET(request) {
   try {
     const coche = await prisma.coches.findUnique({
       where: { matricula: matricula },
-      select: { id: true, matricula: true, pendienteA3: true, ubicacion: { select: { nombreA3: true } } },
+      select: { id: true, matricula: true, pendienteA3: true, lastA3SyncAttempt: true, ubicacion: { select: { nombreA3: true } } },
     });
 
     if (!coche) {
@@ -48,6 +48,12 @@ export async function GET(request) {
     const body = { Caracteristica1: coche.ubicacion?.nombreA3 };
     
     console.log(`[DEBUG_A3_UPDATE]: Enviando a A3 para ${coche.matricula}: URL=${url}, Body=${JSON.stringify(body)}`);
+
+    // ✅ IMPROVED: Actualizar timestamp antes del intento
+    await prisma.coches.update({
+      where: { id: coche.id },
+      data: { lastA3SyncAttempt: new Date() },
+    });
 
     let a3ResponseStatus = 0;
     let a3ResponseBody = "";
@@ -74,7 +80,7 @@ export async function GET(request) {
       }
       a3CallSuccessful = true; // Marcar como exitosa si no lanzó error
       console.log(`[DEBUG_A3_UPDATE]: Llamada PUT a A3 para ${coche.matricula} fue exitosa (status ${a3ResponseStatus}). A3 Response: ${a3ResponseBody}`);
-    });
+    }, undefined, `DEBUG_A3_UPDATE_${matricula}`); // ✅ IMPROVED: Añadir nombre de función para logs
 
     // Solo actualiza la BD local si la llamada a A3 fue exitosa
     if (a3CallSuccessful) {
@@ -97,8 +103,8 @@ export async function GET(request) {
     return NextResponse.json({ 
       error: `Error para ${matricula}: ${error.message}`,
       a3_call_successful: false, // Asegurarse de que se devuelve en caso de error también
-      a3_status: a3ResponseStatus, // Puede ser útil incluso si la lógica de reintento falló
-      a3_response_body: a3ResponseBody 
+      a3_status: a3ResponseStatus || 0, // Puede ser útil incluso si la lógica de reintento falló
+      a3_response_body: a3ResponseBody || 'No disponible'
     }, { status: 500 });
   }
 }
