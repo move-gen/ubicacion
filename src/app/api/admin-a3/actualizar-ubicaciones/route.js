@@ -26,10 +26,11 @@ export async function POST(request) {
 
     for (const { matricula, ubicacionA3 } of vehiculos) {
       procesados++;
+      let coche = null; // Declarar fuera del try para que esté disponible en catch
       
       try {
         // Obtener datos actuales del vehículo
-        const coche = await prisma.coches.findUnique({
+        coche = await prisma.coches.findUnique({
           where: { matricula },
           include: {
             ubicacion: {
