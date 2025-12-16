@@ -28,7 +28,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
   const [progreso, setProgreso] = useState(0);
   const [resultado, setResultado] = useState(null);
   const [loteActual, setLoteActual] = useState(0);
-  const [tamañoLote, setTamañoLote] = useState(3); // Pequeño para evitar timeouts de Vercel
+  const [tamañoLote, setTamañoLote] = useState(2); // Muy pequeño para evitar timeouts de Vercel (5 min)
   const [pausado, setPausado] = useState(false);
   const [filtro, setFiltro] = useState('todos'); // todos, pendientes, actualizados, errores
 
@@ -154,9 +154,9 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
         setProgreso(((i + 1) / totalLotes) * 100);
         
-        // Pausa entre lotes
+        // Pausa breve entre lotes (en el frontend)
         if (i < totalLotes - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
@@ -291,11 +291,12 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
               onChange={(e) => setTamañoLote(Number(e.target.value))}
               disabled={isActualizando}
               className="px-2 py-1 border rounded text-sm"
+              title="Lotes pequeños evitan timeouts de Vercel (5 min máx). Recomendado: 2"
             >
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-              <option value={5}>5</option>
-              <option value={8}>8</option>
+              <option value={1}>1 (Más lento, más seguro)</option>
+              <option value={2}>2 (Recomendado)</option>
+              <option value={3}>3 (Riesgo medio)</option>
+              <option value={4}>4 (Riesgo alto de timeout)</option>
             </select>
           </div>
 

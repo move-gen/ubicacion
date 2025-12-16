@@ -3,6 +3,9 @@ import prisma from '@/lib/db';
 import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server';
 import { syncVehicleToA3 } from '@/lib/a3-sync';
 
+// Configuración de tiempo máximo de ejecución (Vercel límite: 300s en Hobby/Pro)
+export const maxDuration = 60; // 60 segundos máximo por request
+
 export async function POST(request) {
   try {
     const { isAuthenticated } = getKindeServerSession();
@@ -132,8 +135,8 @@ export async function POST(request) {
         console.error(`[ACTUALIZAR_UBICACIONES] Error en ${matricula}:`, error.message);
       }
 
-      // Pausa entre vehículos para evitar sobrecarga de A3
-      await new Promise(resolve => setTimeout(resolve, 1000)); // 1s entre requests
+      // Pausa breve entre vehículos
+      await new Promise(resolve => setTimeout(resolve, 500)); // 0.5s entre requests
     }
 
     console.log(`[ACTUALIZAR_UBICACIONES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores, ${omitidos} omitidos`);

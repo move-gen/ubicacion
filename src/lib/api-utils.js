@@ -1,9 +1,9 @@
 // src/lib/api-utils.js
 
 // Constantes para integración A3
-export const A3_TIMEOUT = 20000; // 20 segundos para dar más tiempo a A3
-export const A3_MAX_RETRIES = 2; // 2 intentos
-export const A3_RETRY_BASE_DELAY = 2000; // 2 segundos base para backoff exponencial
+export const A3_TIMEOUT = 15000; // 15 segundos (balance entre éxito y velocidad)
+export const A3_MAX_RETRIES = 1; // Solo 1 reintento (para evitar timeouts de Vercel)
+export const A3_RETRY_BASE_DELAY = 1000; // 1 segundo base para backoff exponencial
 
 export async function fetchWithTimeout(url, options, timeout = A3_TIMEOUT) {
   const controller = new AbortController();
