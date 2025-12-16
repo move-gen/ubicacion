@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
@@ -31,6 +32,9 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
   const [tamañoLote, setTamañoLote] = useState(1); // 1 vehículo por lote para máxima confiabilidad
   const [pausado, setPausado] = useState(false);
   const [filtro, setFiltro] = useState('todos'); // todos, pendientes, actualizados, errores
+  const [matriculaDiagnostico, setMatriculaDiagnostico] = useState('');
+  const [isDiagnosticando, setIsDiagnosticando] = useState(false);
+  const [resultadoDiagnostico, setResultadoDiagnostico] = useState(null);
 
   const cargarVehiculosPendientes = useCallback(async () => {
     setIsLoading(true);
@@ -211,6 +215,38 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
     }
   };
 
+  const diagnosticarMatricula = async () => {
+    if (!matriculaDiagnostico.trim()) {
+      toast.error('Por favor ingresa una matrícula');
+      return;
+    }
+
+    setIsDiagnosticando(true);
+    setResultadoDiagnostico(null);
+
+    try {
+      const response = await fetch('/api/admin-a3/diagnosticar-matricula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matricula: matriculaDiagnostico.trim() })
+      });
+
+      const data = await response.json();
+      setResultadoDiagnostico(data);
+
+      if (data.success) {
+        toast.success(`Diagnóstico exitoso para ${matriculaDiagnostico}`);
+      } else {
+        toast.error(`Diagnóstico falló para ${matriculaDiagnostico}`);
+      }
+    } catch (error) {
+      toast.error(`Error en diagnóstico: ${error.message}`);
+      setResultadoDiagnostico({ error: error.message });
+    } finally {
+      setIsDiagnosticando(false);
+    }
+  };
+
   const reanudarActualizacion = () => {
     const vehiculosRestantes = vehiculosPendientes.length - (loteActual * tamañoLote);
     if (vehiculosRestantes > 0) {
@@ -273,13 +309,14 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
   return (
     <div className="space-y-6">
       {/* Alerta de rendimiento de A3 */}
-      {vehiculosPendientes.length > 100 && (
+      {vehiculosPendientes.length > 50 && (
         <Alert className="mb-4 border-yellow-500 bg-yellow-50">
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
             <strong>Nota:</strong> Tienes {vehiculosPendientes.length} vehículos pendientes. 
-            Debido a las limitaciones de Vercel y la velocidad de respuesta de A3, se procesarán de 1 en 1 
-            para evitar timeouts. El proceso puede tomar tiempo pero será confiable.
+            Se procesarán de 1 en 1 con timeout de 10s (sin reintentos) para evitar timeouts de Vercel. 
+            Los vehículos que fallen se marcarán automáticamente para reintento posterior. 
+            Esto es necesario cuando A3 está muy lento.
           </AlertDescription>
         </Alert>
       )}
@@ -499,6 +536,78 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
           </CardContent>
         </Card>
       )}
+
+      {/* Herramienta de Diagnóstico */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <AlertTriangle className="mr-2 h-5 w-5 text-blue-600" />
+            Diagnóstico de Conectividad A3
+          </CardTitle>
+          <CardDescription>
+            Prueba la conexión con A3 para una matrícula específica con múltiples timeouts
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 mb-4">
+            <Input
+              type="text"
+              placeholder="Ej: 1207KMH"
+              value={matriculaDiagnostico}
+              onChange={(e) => setMatriculaDiagnostico(e.target.value.toUpperCase())}
+              disabled={isDiagnosticando}
+              className="flex-1"
+            />
+            <Button 
+              onClick={diagnosticarMatricula}
+              disabled={isDiagnosticando || !matriculaDiagnostico.trim()}
+            >
+              {isDiagnosticando ? 'Diagnosticando...' : 'Diagnosticar'}
+            </Button>
+          </div>
+
+          {resultadoDiagnostico && (
+            <div className="mt-4 p-4 bg-gray-50 rounded border">
+              <h4 className="font-semibold mb-2">
+                {resultadoDiagnostico.success ? '✅ Resultado' : '❌ Resultado'}
+              </h4>
+              <p className="text-sm mb-3">{resultadoDiagnostico.mensaje}</p>
+              
+              {resultadoDiagnostico.diagnostico?.intentos && (
+                <div className="space-y-2">
+                  <p className="font-medium text-sm">Intentos:</p>
+                  {resultadoDiagnostico.diagnostico.intentos.map((intento, idx) => (
+                    <div key={idx} className="pl-4 border-l-2 border-gray-300">
+                      <p className="text-xs">
+                        <strong>Intento {intento.numero}</strong> (timeout: {intento.timeout}ms)
+                      </p>
+                      <p className="text-xs">
+                        Resultado: <Badge variant={intento.resultado === 'exitoso' ? 'default' : 'destructive'}>
+                          {intento.resultado}
+                        </Badge>
+                      </p>
+                      <p className="text-xs">Duración: {intento.duracion}ms</p>
+                      {intento.status && <p className="text-xs">HTTP Status: {intento.status}</p>}
+                      {intento.error && <p className="text-xs text-red-600">Error: {intento.error}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {resultadoDiagnostico.recomendaciones && (
+                <div className="mt-4">
+                  <p className="font-medium text-sm mb-1">Recomendaciones:</p>
+                  <ul className="text-xs space-y-1 list-disc pl-5">
+                    {resultadoDiagnostico.recomendaciones.map((rec, idx) => (
+                      <li key={idx}>{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Lista de vehículos pendientes */}
       <Card>
