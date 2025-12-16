@@ -132,8 +132,8 @@ export async function POST(request) {
         console.error(`[ACTUALIZAR_UBICACIONES] Error en ${matricula}:`, error.message);
       }
 
-      // ✅ IMPROVED: Pausa aumentada entre vehículos para evitar sobrecarga de A3
-      await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s entre requests
+      // Pausa entre vehículos para evitar sobrecarga de A3
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 1s entre requests
     }
 
     console.log(`[ACTUALIZAR_UBICACIONES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores, ${omitidos} omitidos`);

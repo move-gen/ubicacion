@@ -1,8 +1,8 @@
 // src/lib/api-utils.js
 
 // Constantes para integración A3
-export const A3_TIMEOUT = 10000; // ✅ REDUCED: 10 segundos (antes 25s)
-export const A3_MAX_RETRIES = 2; // ✅ REDUCED: 2 intentos (antes 3)
+export const A3_TIMEOUT = 20000; // 20 segundos para dar más tiempo a A3
+export const A3_MAX_RETRIES = 2; // 2 intentos
 export const A3_RETRY_BASE_DELAY = 2000; // 2 segundos base para backoff exponencial
 
 export async function fetchWithTimeout(url, options, timeout = A3_TIMEOUT) {

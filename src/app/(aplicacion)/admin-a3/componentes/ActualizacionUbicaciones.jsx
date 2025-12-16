@@ -28,7 +28,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
   const [progreso, setProgreso] = useState(0);
   const [resultado, setResultado] = useState(null);
   const [loteActual, setLoteActual] = useState(0);
-  const [tamañoLote, setTamañoLote] = useState(5); // Más pequeño para ubicaciones
+  const [tamañoLote, setTamañoLote] = useState(3); // Pequeño para evitar timeouts de Vercel
   const [pausado, setPausado] = useState(false);
   const [filtro, setFiltro] = useState('todos'); // todos, pendientes, actualizados, errores
 
@@ -154,9 +154,9 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
         setProgreso(((i + 1) / totalLotes) * 100);
         
-        // Pausa más larga entre lotes para ubicaciones (más crítico)
+        // Pausa entre lotes
         if (i < totalLotes - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
 
@@ -292,10 +292,10 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
               disabled={isActualizando}
               className="px-2 py-1 border rounded text-sm"
             >
+              <option value={2}>2</option>
               <option value={3}>3</option>
               <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
+              <option value={8}>8</option>
             </select>
           </div>
 
