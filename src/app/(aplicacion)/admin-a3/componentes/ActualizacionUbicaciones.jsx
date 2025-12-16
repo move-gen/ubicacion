@@ -96,6 +96,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
       let procesados = 0;
       let exitosos = 0;
       let errores = 0;
+      let omitidos = 0;
       const detalles = [];
 
         for (let i = 0; i < totalLotes; i++) {
@@ -133,10 +134,12 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
             procesados += resultadoLote.procesados;
             exitosos += resultadoLote.exitosos;
             errores += resultadoLote.errores;
+            omitidos += resultadoLote.omitidos || 0;
             detalles.push(...resultadoLote.detalles);
             
             if (onLog) {
-              onLog('success', `Lote ${i + 1} completado: ${resultadoLote.exitosos} exitosos, ${resultadoLote.errores} errores`);
+              const msg = `Lote ${i + 1} completado: ${resultadoLote.exitosos} exitosos, ${resultadoLote.errores} errores${resultadoLote.omitidos ? `, ${resultadoLote.omitidos} omitidos` : ''}`;
+              onLog('success', msg);
             }
           } else {
             const error = await response.json();
@@ -161,6 +164,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
         procesados,
         exitosos,
         errores,
+        omitidos,
         detalles,
         pausado
       };
@@ -176,7 +180,16 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
         if (onFinalizarOperacion) {
           onFinalizarOperacion('Actualización de ubicaciones a A3', resultadoFinal);
         }
-        toast.success(`Actualización completada: ${exitosos} exitosos, ${errores} errores`);
+        const msg = `Actualización completada: ${exitosos} exitosos, ${errores} errores${omitidos > 0 ? `, ${omitidos} omitidos` : ''}`;
+        if (exitosos > 0) {
+          toast.success(msg);
+        } else if (errores > 0) {
+          toast.error(msg);
+        } else if (omitidos > 0) {
+          toast.warning(msg);
+        } else {
+          toast.info(msg);
+        }
         // Recargar la lista después de la actualización
         cargarVehiculosPendientes();
       }
@@ -361,7 +374,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
       )}
 
       {/* Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${resultado ? 'md:grid-cols-5' : 'md:grid-cols-3'}`}>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Total Vehículos</CardTitle>
@@ -384,7 +397,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
         
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-green-600">Actualizados</CardTitle>
+            <CardTitle className="text-sm text-green-600">Sincronizados</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -394,14 +407,25 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
         </Card>
         
         {resultado && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-red-600">Errores</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{resultado.errores}</div>
-            </CardContent>
-          </Card>
+          <>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-blue-600">Exitosos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">{resultado.exitosos}</div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-red-600">Errores</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{resultado.errores}</div>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
 

@@ -20,6 +20,7 @@ export async function POST(request) {
     let procesados = 0;
     let exitosos = 0;
     let errores = 0;
+    let omitidos = 0;
     const detalles = [];
 
     console.log(`[ACTUALIZAR_UBICACIONES] Procesando lote ${lote} con ${vehiculos.length} vehículos`);
@@ -61,16 +62,18 @@ export async function POST(request) {
         });
 
         // Sincronizar con A3 usando el módulo central
+        // FORZAR sincronización en actualizaciones manuales (ignorar intervalo mínimo)
         const result = await syncVehicleToA3(
           matricula,
           ubicacionA3,
           '[ACTUALIZAR_UBICACIONES]',
-          lastAttempt, // Usar el valor antiguo para la validación
-          false // Respetar intervalo mínimo
+          lastAttempt,
+          true // TRUE = Forzar sincronización, ignorar intervalo mínimo en actualizaciones manuales
         );
 
         if (result.skipped) {
-          // Manejar caso de reintento demasiado pronto
+          // Manejar caso de reintento demasiado pronto (no debería ocurrir con forceSync=true)
+          omitidos++;
           detalles.push({
             matricula,
             estado: 'omitido',
@@ -79,7 +82,6 @@ export async function POST(request) {
             error: result.error
           });
           console.log(`[ACTUALIZAR_UBICACIONES] ${matricula} omitido: ${result.error}`);
-          procesados--; // No contar como procesado
           continue;
         }
 
@@ -134,13 +136,14 @@ export async function POST(request) {
       await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5s entre requests
     }
 
-    console.log(`[ACTUALIZAR_UBICACIONES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores`);
+    console.log(`[ACTUALIZAR_UBICACIONES] Lote ${lote} completado: ${exitosos} exitosos, ${errores} errores, ${omitidos} omitidos`);
 
     return NextResponse.json({
       lote,
       procesados,
       exitosos,
       errores,
+      omitidos,
       detalles
     });
 
