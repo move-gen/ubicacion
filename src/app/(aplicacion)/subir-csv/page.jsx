@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'react-hot-toast';
-import { Upload, FileText, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, Clock, Trash2, MapPin } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Table,
@@ -24,6 +24,27 @@ export default function SubirCSVPage() {
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const [deleteResult, setDeleteResult] = useState(null);
+    const [ubicaciones, setUbicaciones] = useState([]);
+    const [loadingUbicaciones, setLoadingUbicaciones] = useState(false);
+
+    useEffect(() => {
+        fetchUbicaciones();
+    }, []);
+
+    const fetchUbicaciones = async () => {
+        setLoadingUbicaciones(true);
+        try {
+            const response = await fetch('/api/ubicaciones-disponibles');
+            if (response.ok) {
+                const data = await response.json();
+                setUbicaciones(data.ubicaciones || []);
+            }
+        } catch (error) {
+            console.error('Error al cargar ubicaciones:', error);
+        } finally {
+            setLoadingUbicaciones(false);
+        }
+    };
 
     const handleFileChange = (event) => {
         setSelectedFile(event.target.files[0]);
@@ -448,6 +469,47 @@ export default function SubirCSVPage() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Ubicaciones Disponibles */}
+            <Card className="w-full max-w-2xl">
+                <CardHeader>
+                    <CardTitle className="flex items-center">
+                        <MapPin className="mr-2 h-6 w-6" /> 
+                        Ubicaciones Disponibles
+                    </CardTitle>
+                    <CardDescription>
+                        Estas son las ubicaciones que puedes usar en tu archivo CSV
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loadingUbicaciones ? (
+                        <p className="text-gray-500">Cargando ubicaciones...</p>
+                    ) : ubicaciones.length === 0 ? (
+                        <p className="text-gray-500">No se encontraron ubicaciones</p>
+                    ) : (
+                        <div className="max-h-60 overflow-y-auto border rounded p-2">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nombre Original</TableHead>
+                                        <TableHead>Usar en CSV</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {ubicaciones.map((ub) => (
+                                        <TableRow key={ub.id}>
+                                            <TableCell className="font-medium">{ub.original}</TableCell>
+                                            <TableCell className="text-sm text-gray-600 font-mono">
+                                                {ub.original}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Sección de Información */}
             <Card className="w-full max-w-2xl">

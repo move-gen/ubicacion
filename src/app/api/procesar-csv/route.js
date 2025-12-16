@@ -107,9 +107,18 @@ export async function POST(request) {
         const ubicacionesCoinciden = ubicacionesMap.get(ubicacionBuscada) || [];
 
         if (ubicacionesCoinciden.length === 0) {
+          // Buscar coincidencias parciales para sugerencias
+          const sugerencias = Array.from(ubicacionesMap.keys())
+            .filter(key => key.includes(ubicacionBuscada) || ubicacionBuscada.includes(key))
+            .slice(0, 3);
+          
+          const mensajeSugerencias = sugerencias.length > 0 
+            ? ` ¿Quizás: ${sugerencias.join(', ')}?` 
+            : ' Verifica que la ubicación existe en el sistema.';
+          
           erroresDetalle.push({
             row: record,
-            error: `Ubicación no encontrada: '${ubicacion}'. El coche no fue añadido ni actualizado.`,
+            error: `Ubicación no encontrada: '${ubicacion}' (buscado como: '${ubicacionBuscada}').${mensajeSugerencias}`,
           });
           continue;
         }
