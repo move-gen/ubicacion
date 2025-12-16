@@ -4,7 +4,7 @@ import { getKindeServerSession } from '@kinde-oss/kinde-auth-nextjs/server';
 import { syncVehicleToA3 } from '@/lib/a3-sync';
 
 // Configuración de tiempo máximo de ejecución (Vercel límite: 300s en Hobby/Pro)
-export const maxDuration = 60; // 60 segundos máximo por request
+export const maxDuration = 50; // 50 segundos máximo por request (margen de seguridad)
 
 export async function POST(request) {
   try {

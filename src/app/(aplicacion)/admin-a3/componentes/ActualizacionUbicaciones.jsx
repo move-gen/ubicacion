@@ -28,7 +28,7 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
   const [progreso, setProgreso] = useState(0);
   const [resultado, setResultado] = useState(null);
   const [loteActual, setLoteActual] = useState(0);
-  const [tamañoLote, setTamañoLote] = useState(2); // Muy pequeño para evitar timeouts de Vercel (5 min)
+  const [tamañoLote, setTamañoLote] = useState(1); // 1 vehículo por lote para máxima confiabilidad
   const [pausado, setPausado] = useState(false);
   const [filtro, setFiltro] = useState('todos'); // todos, pendientes, actualizados, errores
 
@@ -272,6 +272,18 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
   return (
     <div className="space-y-6">
+      {/* Alerta de rendimiento de A3 */}
+      {vehiculosPendientes.length > 100 && (
+        <Alert className="mb-4 border-yellow-500 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            <strong>Nota:</strong> Tienes {vehiculosPendientes.length} vehículos pendientes. 
+            Debido a las limitaciones de Vercel y la velocidad de respuesta de A3, se procesarán de 1 en 1 
+            para evitar timeouts. El proceso puede tomar tiempo pero será confiable.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Controles */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -291,12 +303,11 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
               onChange={(e) => setTamañoLote(Number(e.target.value))}
               disabled={isActualizando}
               className="px-2 py-1 border rounded text-sm"
-              title="Lotes pequeños evitan timeouts de Vercel (5 min máx). Recomendado: 2"
+              title="Lotes pequeños evitan timeouts cuando A3 está lento. Recomendado: 1"
             >
-              <option value={1}>1 (Más lento, más seguro)</option>
-              <option value={2}>2 (Recomendado)</option>
-              <option value={3}>3 (Riesgo medio)</option>
-              <option value={4}>4 (Riesgo alto de timeout)</option>
+              <option value={1}>1 (Recomendado - Máxima confiabilidad)</option>
+              <option value={2}>2 (Riesgo medio de timeout)</option>
+              <option value={3}>3 (Alto riesgo de timeout)</option>
             </select>
           </div>
 
