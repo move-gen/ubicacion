@@ -49,10 +49,14 @@ export async function POST(request) {
           throw new Error('Ubicación A3 no especificada');
         }
 
-        // ✅ IMPROVED: Actualizar timestamp antes del intento
+        // Guardar el último intento antes de actualizar
+        const lastAttempt = coche.lastA3SyncAttempt;
+        const now = new Date();
+
+        // Actualizar timestamp antes del intento
         await prisma.coches.update({
           where: { matricula },
-          data: { lastA3SyncAttempt: new Date() }
+          data: { lastA3SyncAttempt: now }
         });
 
         // Sincronizar con A3 usando el módulo central
@@ -60,16 +64,16 @@ export async function POST(request) {
           matricula,
           ubicacionA3,
           '[ACTUALIZAR_UBICACIONES]',
-          coche.lastA3SyncAttempt,
+          lastAttempt, // Usar el valor antiguo para la validación
           false // Respetar intervalo mínimo
         );
 
         if (result.skipped) {
-          // ✅ NEW: Manejar caso de reintento demasiado pronto
+          // Manejar caso de reintento demasiado pronto
           detalles.push({
             matricula,
             estado: 'omitido',
-            ubicacionLocal: coche.ubicacion.nombre,
+            ubicacionLocal: coche.ubicacion?.nombre || 'N/A',
             ubicacionA3,
             error: result.error
           });
@@ -93,13 +97,13 @@ export async function POST(request) {
           detalles.push({
             matricula,
             estado: 'exitoso',
-            ubicacionLocal: coche.ubicacion.nombre,
+            ubicacionLocal: coche.ubicacion?.nombre || 'N/A',
             ubicacionA3
           });
 
-          console.log(`[ACTUALIZAR_UBICACIONES] ${matricula}: "${coche.ubicacion.nombre}" -> A3: "${ubicacionA3}"`);
+          console.log(`[ACTUALIZAR_UBICACIONES] ${matricula}: "${coche.ubicacion?.nombre}" -> A3: "${ubicacionA3}"`);
         } else {
-          throw new Error(result.error);
+          throw new Error(result.error || 'Error desconocido en sincronización');
         }
 
       } catch (error) {

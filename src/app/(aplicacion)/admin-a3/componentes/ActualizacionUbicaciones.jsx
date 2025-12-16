@@ -69,10 +69,28 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
     setProgreso(0);
     setResultado(null);
     
-    onIniciarOperacion('Actualización de ubicaciones a A3');
+    if (onIniciarOperacion) {
+      onIniciarOperacion('Actualización de ubicaciones a A3');
+    }
     
     try {
-      const vehiculosParaActualizar = vehiculosPendientes.slice(iniciarDesde);
+      // Filtrar vehículos que tienen ubicacionA3 válida (no 'N/A')
+      const vehiculosValidos = vehiculosPendientes.filter(v => 
+        v.ubicacionA3 && v.ubicacionA3 !== 'N/A' && v.ubicacionA3.trim() !== ''
+      );
+      
+      const vehiculosInvalidos = vehiculosPendientes.length - vehiculosValidos.length;
+      if (vehiculosInvalidos > 0) {
+        toast.warning(`${vehiculosInvalidos} vehículos omitidos por no tener nombreA3 configurado en su ubicación`);
+      }
+      
+      if (vehiculosValidos.length === 0) {
+        toast.error('No hay vehículos válidos para actualizar. Todos carecen de nombreA3 en su ubicación.');
+        setIsActualizando(false);
+        return;
+      }
+      
+      const vehiculosParaActualizar = vehiculosValidos.slice(iniciarDesde);
       const totalLotes = Math.ceil(vehiculosParaActualizar.length / tamañoLote);
       
       let procesados = 0;
@@ -80,18 +98,22 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
       let errores = 0;
       const detalles = [];
 
-      for (let i = 0; i < totalLotes; i++) {
+        for (let i = 0; i < totalLotes; i++) {
         if (pausado) {
-          onLog('info', 'Actualización pausada por el usuario');
+          if (onLog) {
+            onLog('info', 'Actualización pausada por el usuario');
+          }
           break;
         }
 
         const inicioLote = iniciarDesde + (i * tamañoLote);
-        const finLote = Math.min(inicioLote + tamañoLote, vehiculosPendientes.length);
+        const finLote = Math.min(inicioLote + tamañoLote, vehiculosValidos.length);
         const lote = vehiculosParaActualizar.slice(0, finLote - iniciarDesde);
         
         setLoteActual(i + 1);
-        onLog('info', `Procesando lote ${i + 1}/${totalLotes} (${lote.length} vehículos)`);
+        if (onLog) {
+          onLog('info', `Procesando lote ${i + 1}/${totalLotes} (${lote.length} vehículos)`);
+        }
 
         try {
           const response = await fetch('/api/admin-a3/actualizar-ubicaciones', {
@@ -113,13 +135,17 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
             errores += resultadoLote.errores;
             detalles.push(...resultadoLote.detalles);
             
-            onLog('success', `Lote ${i + 1} completado: ${resultadoLote.exitosos} exitosos, ${resultadoLote.errores} errores`);
+            if (onLog) {
+              onLog('success', `Lote ${i + 1} completado: ${resultadoLote.exitosos} exitosos, ${resultadoLote.errores} errores`);
+            }
           } else {
             const error = await response.json();
-            throw new Error(error.message || 'Error en lote');
+            throw new Error(error.error || error.message || 'Error en lote');
           }
         } catch (error) {
-          onLog('error', `Error en lote ${i + 1}: ${error.message}`);
+          if (onLog) {
+            onLog('error', `Error en lote ${i + 1}: ${error.message}`);
+          }
           errores += lote.length;
         }
 
@@ -142,17 +168,23 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
       setResultado(resultadoFinal);
       
       if (pausado) {
-        onLog('warning', 'Actualización pausada');
+        if (onLog) {
+          onLog('warning', 'Actualización pausada');
+        }
         toast.warning('Actualización pausada');
       } else {
-        onFinalizarOperacion('Actualización de ubicaciones a A3', resultadoFinal);
+        if (onFinalizarOperacion) {
+          onFinalizarOperacion('Actualización de ubicaciones a A3', resultadoFinal);
+        }
         toast.success(`Actualización completada: ${exitosos} exitosos, ${errores} errores`);
         // Recargar la lista después de la actualización
         cargarVehiculosPendientes();
       }
 
     } catch (error) {
-      onErrorOperacion('Actualización de ubicaciones a A3', error.message);
+      if (onErrorOperacion) {
+        onErrorOperacion('Actualización de ubicaciones a A3', error.message);
+      }
       toast.error(`Error en actualización: ${error.message}`);
     } finally {
       setIsActualizando(false);
@@ -161,7 +193,9 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
   const pausarActualizacion = () => {
     setPausado(true);
-    onLog('warning', 'Actualización pausada por el usuario');
+    if (onLog) {
+      onLog('warning', 'Actualización pausada por el usuario');
+    }
   };
 
   const reanudarActualizacion = () => {
