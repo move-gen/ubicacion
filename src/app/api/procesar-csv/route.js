@@ -42,13 +42,36 @@ export async function POST(request) {
     const fileBuffer = await file.arrayBuffer();
     const fileContent = Buffer.from(fileBuffer).toString("utf8");
 
+    // Detectar el delimitador
+    const firstLine = fileContent.split('\n')[0];
+    let delimiter = ',';
+    
+    if (firstLine.includes('\t')) {
+      delimiter = '\t';
+    } else if (firstLine.includes(';')) {
+      delimiter = ';';
+    } else if (firstLine.includes('|')) {
+      delimiter = '|';
+    }
+
+    console.log('Delimitador detectado:', delimiter === '\t' ? 'TAB' : delimiter);
+    console.log('Primera línea:', firstLine);
+
     let records;
     try {
       records = parse(fileContent, {
         columns: true,
         skip_empty_lines: true,
         trim: true,
+        delimiter: delimiter,
+        relax_column_count: true,
       });
+
+      console.log('Total registros parseados:', records.length);
+      if (records.length > 0) {
+        console.log('Columnas detectadas:', Object.keys(records[0]));
+        console.log('Primer registro:', records[0]);
+      }
     } catch (parseError) {
       console.error("Error al parsear el CSV:", parseError);
       return NextResponse.json(
@@ -91,12 +114,22 @@ export async function POST(request) {
     }
 
     for (const record of records) {
-      const { matricula, ubicacion } = record;
+      // Buscar las columnas con nombres flexibles
+      const columnas = Object.keys(record);
+      const colMatricula = columnas.find(col => 
+        normalize(col).includes('matricula') || normalize(col) === 'matricula'
+      );
+      const colUbicacion = columnas.find(col => 
+        normalize(col).includes('ubicacion') || normalize(col) === 'ubicacion'
+      );
+
+      const matricula = colMatricula ? record[colMatricula]?.trim() : null;
+      const ubicacion = colUbicacion ? record[colUbicacion]?.trim() : null;
 
       if (!matricula || !ubicacion) {
         erroresDetalle.push({
           row: record,
-          error: "Matrícula o ubicación faltante.",
+          error: `Matrícula o ubicación faltante. Columnas detectadas: ${columnas.join(', ')}`,
         });
         continue;
       }

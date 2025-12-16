@@ -26,6 +26,10 @@ export default function SubirCSVPage() {
     const [deleteResult, setDeleteResult] = useState(null);
     const [ubicaciones, setUbicaciones] = useState([]);
     const [loadingUbicaciones, setLoadingUbicaciones] = useState(false);
+    const [validationResult, setValidationResult] = useState(null);
+    const [isValidating, setIsValidating] = useState(false);
+    const [conversionResult, setConversionResult] = useState(null);
+    const [isConverting, setIsConverting] = useState(false);
 
     useEffect(() => {
         fetchUbicaciones();
@@ -48,6 +52,94 @@ export default function SubirCSVPage() {
 
     const handleFileChange = (event) => {
         setSelectedFile(event.target.files[0]);
+        setValidationResult(null);
+        setImportResult(null);
+    };
+
+    const handleValidate = async () => {
+        if (!selectedFile) {
+            toast.error('Por favor, selecciona un archivo CSV.');
+            return;
+        }
+
+        setIsValidating(true);
+        setValidationResult(null);
+        const formData = new FormData();
+        formData.append('csvFile', selectedFile);
+
+        try {
+            const response = await fetch('/api/validar-csv', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setValidationResult(data);
+                toast.success('CSV validado correctamente');
+            } else {
+                const errorData = await response.json();
+                setValidationResult(errorData);
+                toast.error('Error al validar el CSV');
+            }
+        } catch (error) {
+            console.error('Error al validar el CSV:', error);
+            toast.error('Error de red al validar el CSV');
+        } finally {
+            setIsValidating(false);
+        }
+    };
+
+    const handleConvert = async () => {
+        if (!selectedFile) {
+            toast.error('Por favor, selecciona un archivo CSV.');
+            return;
+        }
+
+        setIsConverting(true);
+        setConversionResult(null);
+        const formData = new FormData();
+        formData.append('csvFile', selectedFile);
+
+        try {
+            const response = await fetch('/api/convertir-csv', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setConversionResult(data);
+                toast.success(`CSV convertido: ${data.procesados} registros procesados`);
+            } else {
+                const errorData = await response.json();
+                setConversionResult(errorData);
+                toast.error('Error al convertir el CSV');
+            }
+        } catch (error) {
+            console.error('Error al convertir el CSV:', error);
+            toast.error('Error de red al convertir el CSV');
+        } finally {
+            setIsConverting(false);
+        }
+    };
+
+    const downloadConvertedCSV = () => {
+        if (!conversionResult || !conversionResult.csvContent) {
+            toast.error('No hay CSV convertido para descargar');
+            return;
+        }
+
+        const blob = new Blob([conversionResult.csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'convertido.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('CSV descargado');
     };
 
     const handleDeleteFileChange = (event) => {
@@ -171,15 +263,35 @@ export default function SubirCSVPage() {
                                 type="file"
                                 accept=".csv"
                                 onChange={handleFileChange}
-                                disabled={isLoading}
+                                disabled={isLoading || isValidating || isConverting}
                             />
-                            <Button
-                                onClick={handleUpload}
-                                disabled={!selectedFile || isLoading}
-                                className="w-full"
-                            >
-                                {isLoading ? 'Procesando...' : 'Subir y Procesar CSV'}
-                            </Button>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={handleValidate}
+                                        disabled={!selectedFile || isValidating || isLoading || isConverting}
+                                        variant="outline"
+                                        className="flex-1"
+                                    >
+                                        {isValidating ? 'Validando...' : 'Validar CSV'}
+                                    </Button>
+                                    <Button
+                                        onClick={handleConvert}
+                                        disabled={!selectedFile || isConverting || isLoading || isValidating}
+                                        variant="secondary"
+                                        className="flex-1"
+                                    >
+                                        {isConverting ? 'Convirtiendo...' : 'Convertir Formato'}
+                                    </Button>
+                                </div>
+                                <Button
+                                    onClick={handleUpload}
+                                    disabled={!selectedFile || isLoading || isValidating || isConverting}
+                                    className="w-full"
+                                >
+                                    {isLoading ? 'Procesando...' : 'Importar CSV'}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -217,6 +329,167 @@ export default function SubirCSVPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Resultados de Conversión */}
+            {conversionResult && (
+                <Card className="w-full max-w-2xl">
+                    <CardHeader>
+                        <CardTitle className="flex items-center">
+                            <FileText className="mr-2 h-6 w-6" /> 
+                            Resultado de la Conversión
+                        </CardTitle>
+                        <CardDescription>
+                            Tu archivo ha sido convertido al formato correcto
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {conversionResult.error ? (
+                            <div className="text-red-600">
+                                <p className="font-semibold">Error: {conversionResult.error}</p>
+                                {conversionResult.details && <p className="text-sm">{conversionResult.details}</p>}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Total líneas:</p>
+                                        <p className="font-semibold">{conversionResult.totalLineas}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Procesados:</p>
+                                        <p className="font-semibold text-green-600">{conversionResult.procesados}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Errores:</p>
+                                        <p className="font-semibold text-red-600">{conversionResult.errores}</p>
+                                    </div>
+                                </div>
+
+                                {conversionResult.csvContent && (
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-2">Vista previa del CSV convertido:</p>
+                                        <div className="bg-gray-100 p-3 rounded text-sm font-mono max-h-60 overflow-auto">
+                                            {conversionResult.csvContent.split('\n').slice(0, 10).map((line, idx) => (
+                                                <div key={idx}>{line}</div>
+                                            ))}
+                                            {conversionResult.csvContent.split('\n').length > 10 && (
+                                                <div className="text-gray-500">... y {conversionResult.csvContent.split('\n').length - 10} líneas más</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <Button onClick={downloadConvertedCSV} className="w-full">
+                                    Descargar CSV Convertido
+                                </Button>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Resultados de Validación */}
+            {validationResult && (
+                <Card className="w-full max-w-2xl">
+                    <CardHeader>
+                        <CardTitle className="flex items-center">
+                            <FileText className="mr-2 h-6 w-6" /> 
+                            Validación del CSV
+                        </CardTitle>
+                        <CardDescription>
+                            Información detectada del archivo CSV
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {validationResult.error ? (
+                            <div className="text-red-600">
+                                <p className="font-semibold">Error: {validationResult.error}</p>
+                                {validationResult.details && <p className="text-sm">{validationResult.details}</p>}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-600">Nombre archivo:</p>
+                                        <p className="font-semibold">{validationResult.fileName}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Delimitador:</p>
+                                        <p className="font-semibold">{validationResult.delimiter}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Total registros:</p>
+                                        <p className="font-semibold">{validationResult.totalRecords}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-gray-600">Columnas detectadas:</p>
+                                        <p className="font-semibold">{validationResult.columns?.length || 0}</p>
+                                    </div>
+                                </div>
+
+                                {validationResult.columns && validationResult.columns.length > 0 && (
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-2">Nombres de columnas:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {validationResult.columns.map((col, idx) => (
+                                                <Badge key={idx} variant="secondary">{col}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {validationResult.firstLines && validationResult.firstLines.length > 0 && (
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-2">Primeras líneas del archivo:</p>
+                                        <div className="bg-gray-100 p-3 rounded text-sm font-mono max-h-40 overflow-auto">
+                                            {validationResult.firstLines.map((line, idx) => (
+                                                <div key={idx} className="whitespace-pre-wrap break-all">
+                                                    {line || '(línea vacía)'}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {validationResult.sampleRecords && validationResult.sampleRecords.length > 0 && (
+                                    <div>
+                                        <p className="text-sm text-gray-600 mb-2">Registros de muestra (primeros 5):</p>
+                                        <div className="border rounded p-2 max-h-60 overflow-auto">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        {validationResult.columns.map((col, idx) => (
+                                                            <TableHead key={idx}>{col}</TableHead>
+                                                        ))}
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {validationResult.sampleRecords.map((record, idx) => (
+                                                        <TableRow key={idx}>
+                                                            {validationResult.columns.map((col, colIdx) => (
+                                                                <TableCell key={colIdx} className="text-sm">
+                                                                    {record[col] || '(vacío)'}
+                                                                </TableCell>
+                                                            ))}
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {validationResult.parseError && (
+                                    <div className="text-red-600">
+                                        <p className="font-semibold">Error al parsear:</p>
+                                        <p className="text-sm">{validationResult.parseError}</p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Resultados de Importación */}
             {importResult && (
