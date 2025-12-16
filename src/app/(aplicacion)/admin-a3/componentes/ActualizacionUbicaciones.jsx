@@ -52,10 +52,11 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
     } catch (error) {
       onErrorOperacion('Carga de vehículos pendientes', error.message);
       toast.error(`Error: ${error.message}`);
+      setVehiculosPendientes([]); // Evitar reintentos infinitos
     } finally {
       setIsLoading(false);
     }
-  }, [onIniciarOperacion, onErrorOperacion]);
+  }, [onIniciarOperacion, onFinalizarOperacion, onErrorOperacion]);
 
   const actualizarUbicaciones = async (iniciarDesde = 0) => {
     if (isActualizando) return;

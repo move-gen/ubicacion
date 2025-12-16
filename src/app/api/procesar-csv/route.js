@@ -127,9 +127,15 @@ export async function POST(request) {
       const ubicacion = colUbicacion ? record[colUbicacion]?.trim() : null;
 
       if (!matricula || !ubicacion) {
+        const detalleError = [];
+        if (!colMatricula) detalleError.push('columna matrícula no encontrada');
+        if (!colUbicacion) detalleError.push('columna ubicación no encontrada');
+        if (colMatricula && !matricula) detalleError.push('matrícula vacía');
+        if (colUbicacion && !ubicacion) detalleError.push('ubicación vacía');
+        
         erroresDetalle.push({
           row: record,
-          error: `Matrícula o ubicación faltante. Columnas detectadas: ${columnas.join(', ')}`,
+          error: `Error: ${detalleError.join(', ')}. Columnas en CSV: [${columnas.join(', ')}]. Valores: ${JSON.stringify(record)}`,
         });
         continue;
       }

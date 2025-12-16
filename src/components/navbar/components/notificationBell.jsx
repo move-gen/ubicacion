@@ -35,13 +35,22 @@ const NotificationBell = () => {
     }
   }, [isAuthenticated, getPermission, isLoading]);
 
-  // ✅ Fetch de notificaciones
+  // ✅ Fetch de notificaciones con límite de reintentos
   useEffect(() => {
     if (isAdmin) {
+      let consecutiveErrors = 0;
+      const MAX_ERRORS = 3;
+      
       const fetchNotificaciones = async () => {
         try {
           const res = await fetch("/api/comprobar-a3");
           if (!res.ok) {
+            consecutiveErrors++;
+            if (consecutiveErrors >= MAX_ERRORS) {
+              console.error("Demasiados errores consecutivos al obtener notificaciones");
+              setNotificaciones([]);
+              return;
+            }
             console.error("Error al obtener notificaciones: Status", res.status);
             setNotificaciones([]);
             return;
@@ -49,7 +58,9 @@ const NotificationBell = () => {
           const data = await res.json();
           // Asegurar que siempre sea un array
           setNotificaciones(Array.isArray(data) ? data : []);
+          consecutiveErrors = 0; // Reset si hay éxito
         } catch (error) {
+          consecutiveErrors++;
           console.error("Error al obtener notificaciones:", error);
           setNotificaciones([]);
         }

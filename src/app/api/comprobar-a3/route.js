@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
 import prisma from "@/lib/db";
-import { redirect } from "next/navigation";
+
 export async function GET() {
   try {
     const { isAuthenticated, getPermission } = getKindeServerSession();
     if (!(await isAuthenticated())) {
-      redirect("/login");
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     const permission = await getPermission("crud:ubicacion_coches");
 
     if (!permission.isGranted) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 400 });
+      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     }
     // ✅ Consulta a la base de datos para obtener los coches pendientes
     const cochesActualizados = await prisma.coches.findMany({

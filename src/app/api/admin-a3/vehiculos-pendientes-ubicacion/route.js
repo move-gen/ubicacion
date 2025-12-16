@@ -28,8 +28,8 @@ export async function GET() {
 
     const vehiculosFormateados = vehiculos.map(vehiculo => ({
       matricula: vehiculo.matricula,
-      ubicacionLocal: vehiculo.ubicacion.nombre,
-      ubicacionA3: vehiculo.ubicacion.nombreA3,
+      ubicacionLocal: vehiculo.ubicacion?.nombre || 'Sin ubicación',
+      ubicacionA3: vehiculo.ubicacion?.nombreA3 || 'N/A',
       pendienteA3: vehiculo.pendienteA3,
       numeroReintentosA3: vehiculo.numeroReintentosA3 || 0,
       ultimaActualizacion: vehiculo.updatedAt,

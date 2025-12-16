@@ -219,12 +219,29 @@ export default function ControlLotes({ onLog, onIniciarOperacion, onFinalizarOpe
   };
 
   useEffect(() => {
-    cargarConfiguracion();
+    let interval;
+    let consecutiveErrors = 0;
+    const MAX_ERRORS = 3;
+
+    const cargarConReintentos = async () => {
+      try {
+        await cargarConfiguracion();
+        consecutiveErrors = 0; // Reset en caso de éxito
+      } catch (error) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= MAX_ERRORS) {
+          clearInterval(interval);
+          onLog('error', `Polling detenido tras ${MAX_ERRORS} errores consecutivos`);
+          toast.error('Polling de configuración detenido por errores. Recarga la página.');
+        }
+      }
+    };
+
+    cargarConReintentos();
+    interval = setInterval(cargarConReintentos, 10000); // Reducido a cada 10 segundos
     
-    // Actualizar estado cada 5 segundos
-    const interval = setInterval(cargarConfiguracion, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [cargarConfiguracion, onLog]);
 
   return (
     <div className="space-y-6">
