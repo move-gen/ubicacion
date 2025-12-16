@@ -34,29 +34,32 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
   const cargarVehiculosPendientes = useCallback(async () => {
     setIsLoading(true);
-    onIniciarOperacion('Carga de vehículos pendientes');
     
     try {
       const response = await fetch('/api/admin-a3/vehiculos-pendientes-ubicacion');
       if (response.ok) {
         const data = await response.json();
         setVehiculosPendientes(data.vehiculos);
-        onFinalizarOperacion('Carga de vehículos pendientes', {
-          total: data.total,
-          pendientes: data.vehiculos.length
-        });
+        if (onFinalizarOperacion) {
+          onFinalizarOperacion('Carga de vehículos pendientes', {
+            total: data.total,
+            pendientes: data.vehiculos.length
+          });
+        }
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Error cargando vehículos');
       }
     } catch (error) {
-      onErrorOperacion('Carga de vehículos pendientes', error.message);
+      if (onErrorOperacion) {
+        onErrorOperacion('Carga de vehículos pendientes', error.message);
+      }
       toast.error(`Error: ${error.message}`);
-      setVehiculosPendientes([]); // Evitar reintentos infinitos
+      setVehiculosPendientes([]);
     } finally {
       setIsLoading(false);
     }
-  }, [onIniciarOperacion, onFinalizarOperacion, onErrorOperacion]);
+  }, []); // Sin dependencias para evitar loops
 
   const actualizarUbicaciones = async (iniciarDesde = 0) => {
     if (isActualizando) return;
@@ -217,7 +220,8 @@ export default function ActualizacionUbicaciones({ onLog, onIniciarOperacion, on
 
   useEffect(() => {
     cargarVehiculosPendientes();
-  }, [cargarVehiculosPendientes]);
+    // Solo cargar una vez al montar el componente
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">

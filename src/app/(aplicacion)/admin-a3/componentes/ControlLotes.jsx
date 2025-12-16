@@ -48,12 +48,15 @@ export default function ControlLotes({ onLog, onIniciarOperacion, onFinalizarOpe
         setHistorialLotes(data.historialLotes || []);
       }
     } catch (error) {
-      onErrorOperacion('Carga de configuración', error.message);
-      toast.error(`Error cargando configuración: ${error.message}`);
+      if (onErrorOperacion) {
+        onErrorOperacion('Carga de configuración', error.message);
+      }
+      console.error('Error cargando configuración:', error.message);
+      throw error; // Re-lanzar para el mecanismo de conteo de errores
     } finally {
       setIsLoading(false);
     }
-  }, [onErrorOperacion]);
+  }, []); // Sin dependencias para evitar loops
 
   const guardarConfiguracion = async () => {
     try {
@@ -226,22 +229,26 @@ export default function ControlLotes({ onLog, onIniciarOperacion, onFinalizarOpe
     const cargarConReintentos = async () => {
       try {
         await cargarConfiguracion();
-        consecutiveErrors = 0; // Reset en caso de éxito
+        consecutiveErrors = 0;
       } catch (error) {
         consecutiveErrors++;
         if (consecutiveErrors >= MAX_ERRORS) {
-          clearInterval(interval);
-          onLog('error', `Polling detenido tras ${MAX_ERRORS} errores consecutivos`);
+          if (interval) clearInterval(interval);
+          if (onLog) {
+            onLog('error', `Polling detenido tras ${MAX_ERRORS} errores consecutivos`);
+          }
           toast.error('Polling de configuración detenido por errores. Recarga la página.');
         }
       }
     };
 
     cargarConReintentos();
-    interval = setInterval(cargarConReintentos, 10000); // Reducido a cada 10 segundos
+    interval = setInterval(cargarConReintentos, 30000); // Aumentado a 30 segundos
     
-    return () => clearInterval(interval);
-  }, [cargarConfiguracion, onLog]);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">

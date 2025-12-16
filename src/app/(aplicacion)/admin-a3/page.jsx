@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +55,7 @@ export default function AdminA3Page() {
     }
   };
 
-  const agregarLog = (tipo, mensaje, detalles = null) => {
+  const agregarLog = useCallback((tipo, mensaje, detalles = null) => {
     const nuevoLog = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
@@ -63,23 +63,23 @@ export default function AdminA3Page() {
       mensaje,
       detalles
     };
-    setLogs(prev => [nuevoLog, ...prev.slice(0, 99)]); // Mantener últimos 100 logs
-  };
+    setLogs(prev => [nuevoLog, ...prev.slice(0, 99)]);
+  }, []);
 
-  const iniciarOperacion = (tipo) => {
+  const iniciarOperacion = useCallback((tipo) => {
     setOperacionActiva(tipo);
     agregarLog('info', `Iniciando operación: ${tipo}`);
-  };
+  }, [agregarLog]);
 
-  const finalizarOperacion = (tipo, resultado) => {
+  const finalizarOperacion = useCallback((tipo, resultado) => {
     setOperacionActiva(null);
     agregarLog('success', `Operación completada: ${tipo}`, resultado);
-  };
+  }, [agregarLog]);
 
-  const errorOperacion = (tipo, error) => {
+  const errorOperacion = useCallback((tipo, error) => {
     setOperacionActiva(null);
     agregarLog('error', `Error en operación: ${tipo}`, error);
-  };
+  }, [agregarLog]);
 
   return (
     <div className="container mx-auto p-6 space-y-6">

@@ -23,25 +23,31 @@ export default function EstadoComparacion({ onLog, onIniciarOperacion, onFinaliz
 
   const cargarComparacion = async () => {
     setIsLoading(true);
-    onIniciarOperacion('Comparación de estado');
+    if (onIniciarOperacion) {
+      onIniciarOperacion('Comparación de estado');
+    }
     
     try {
       const response = await fetch('/api/admin-a3/comparar-estado');
       if (response.ok) {
         const data = await response.json();
         setComparacion(data);
-        onFinalizarOperacion('Comparación de estado', {
-          total: data.total,
-          sincronizados: data.sincronizados,
-          diferencias: data.diferencias,
-          errores: data.errores
-        });
+        if (onFinalizarOperacion) {
+          onFinalizarOperacion('Comparación de estado', {
+            total: data.total,
+            sincronizados: data.sincronizados,
+            diferencias: data.diferencias,
+            errores: data.errores
+          });
+        }
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Error en la comparación');
       }
     } catch (error) {
-      onErrorOperacion('Comparación de estado', error.message);
+      if (onErrorOperacion) {
+        onErrorOperacion('Comparación de estado', error.message);
+      }
       toast.error(`Error en comparación: ${error.message}`);
     } finally {
       setIsLoading(false);

@@ -32,28 +32,31 @@ export default function SincronizacionNombres({ onLog, onIniciarOperacion, onFin
 
   const cargarVehiculosSinNombre = useCallback(async () => {
     setIsLoading(true);
-    onIniciarOperacion('Carga de vehículos sin nombre');
     
     try {
       const response = await fetch('/api/admin-a3/vehiculos-sin-nombre');
       if (response.ok) {
         const data = await response.json();
         setVehiculosSinNombre(data.vehiculos);
-        onFinalizarOperacion('Carga de vehículos sin nombre', {
-          total: data.total,
-          encontrados: data.vehiculos.length
-        });
+        if (onFinalizarOperacion) {
+          onFinalizarOperacion('Carga de vehículos sin nombre', {
+            total: data.total,
+            encontrados: data.vehiculos.length
+          });
+        }
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Error cargando vehículos');
       }
     } catch (error) {
-      onErrorOperacion('Carga de vehículos sin nombre', error.message);
+      if (onErrorOperacion) {
+        onErrorOperacion('Carga de vehículos sin nombre', error.message);
+      }
       toast.error(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [onIniciarOperacion, onErrorOperacion]);
+  }, []); // Sin dependencias para evitar loops
 
   const sincronizarNombres = async (iniciarDesde = 0) => {
     if (isSincronizando) return;
@@ -192,7 +195,8 @@ export default function SincronizacionNombres({ onLog, onIniciarOperacion, onFin
 
   useEffect(() => {
     cargarVehiculosSinNombre();
-  }, []);
+    // Solo cargar una vez al montar el componente
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-6">
